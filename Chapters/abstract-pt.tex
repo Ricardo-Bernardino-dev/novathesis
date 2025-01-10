@@ -8,29 +8,13 @@
 
 \typeout{NT FILE abstract-pt.tex}%
 
-Independentemente da língua em que a dissertação está escrita, geralmente esta contém pelo menos dois resumos: um resumo na mesma língua do texto principal e outro resumo numa outra língua.
+A sequenciação Sanger, apesar de ser uma pedra angular na análise de DNA, frequentemente produz resultados de alinhamento que requerem verificação manual intensiva para identificar anomalias e imprecisões. Este processo não é apenas moroso, mas também suscetível a erros humanos, apresentando desafios significativos para laboratórios que gerem dados de sequenciação de alto desempenho. Abordar este problema é crucial para melhorar a eficiência e a confiabilidade nos fluxos de trabalho genómicos.
 
-A ordem dos resumos varia de acordo com a escola. Se a sua escola tiver regulamentos específicos sobre a ordem dos resumos, o template (\LaTeX) \gls{novathesis} irá respeitá-los. Caso contrário, a regra padrão no template \gls{novathesis} é ter em primeiro lugar o resumo \emph{no mesmo idioma do texto principal} e depois o resumo \emph{no outro idioma}. Por exemplo, se a dissertação for escrita em português, a ordem dos resumos será primeiro o português e depois o inglês, seguido do texto principal em português. Se a dissertação for escrita em inglês, a ordem dos resumos será primeiro em inglês e depois em português, seguida do texto principal em inglês.
-%
-No entanto, esse pedido pode ser personalizado adicionando um dos seguintes ao arquivo \verb+5_packages.tex+.
+Esta tese apresenta uma ferramenta baseada em inteligência artificial (IA) concebida para automatizar a verificação dos resultados de alinhamento de sequências de DNA produzidos pelo sequenciador ABI3730xl. Utilizando modelos de aprendizagem automática treinados com dados reais de placas de 96 poços, a ferramenta identifica anomalias, deteta homologias de sequências e determina a aceitabilidade dos resultados com um elevado grau de precisão. Para facilitar a adoção ampla, a ferramenta é acessível através de uma plataforma online, permitindo a utilização remota por laboratórios em todo o mundo.
 
-\begin{verbatim}
-    \abstractorder(<MAIN_LANG>):={<LANG_1>,...,<LANG_N>}
-\end{verbatim}
+A solução proposta melhora significativamente os fluxos de trabalho laboratoriais ao simplificar o processo de verificação e reduzir a dependência da supervisão manual. Isto não apenas minimiza erros, mas também acelera o processamento de dados, abrindo caminho para avanços na genómica de precisão e na biotecnologia. A capacidade da ferramenta de identificar poços rotulados de forma incorreta destaca ainda mais o seu valor prático no suporte à análise de DNA de alto desempenho.
 
-Por exemplo, para um documento escrito em Alemão com resumos em Alemão, Inglês e Italiano (por esta ordem), pode usar-se:
-\begin{verbatim}
-    \ntsetup{abstractorder={de={de,en,it}}}
-\end{verbatim}
-
-Relativamente ao seu conteúdo, os resumos não devem ultrapassar uma página e frequentemente tentam responder às seguintes questões (é imprescindível a adaptação às práticas habituais da sua área científica):
-
-\begin{enumerate}
-  \item Qual é o problema?
-  \item Porque é que é um problema interessante/desafiante?
-  \item Qual é a proposta de abordagem/solução?
-  \item Quais são as consequências/resultados da solução proposta?
-\end{enumerate}
+Ao abordar limitações-chave nas práticas atuais, este trabalho demonstra o potencial transformador de integrar inteligência artificial à investigação genómica, contribuindo para um futuro de sequenciação de DNA mais eficiente e preciso.
 
 % E agora vamos fazer um teste com uma quebra de linha no hífen a ver se a \LaTeX\ duplica o hífen na linha seguinte se usarmos \verb+"-+… em vez de \verb+-+.
 %
@@ -43,9 +27,10 @@ Relativamente ao seu conteúdo, os resumos não devem ultrapassar uma página e 
 % Palavra-chave 1, Palavra-chave 2, Palavra-chave 3, Palavra-chave 4
 % \end{keywords}
 \keywords{
-  Primeira palavra-chave \and
-  Outra palavra-chave \and
-  Mais uma palavra-chave \and
-  A última palavra-chave
+  Sequenciação Sanger \and
+  Inteligência Artificial \and
+  Verificação de DNA \and
+  Aprendizagem Automática \and
+  Fluxos de trabalho genómicos
 }
 % to add an extra black line

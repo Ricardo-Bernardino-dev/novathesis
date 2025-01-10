@@ -8,30 +8,37 @@
 
 \typeout{NT FILE chapter2.tex}%
 
-\chapter{NOVAthesis Template \emph{User's Manual}}
+\chapter{State of the Art}
 \label{cha:users_manual}
 
 \glsresetall
 
-\begin{center}
-  \fbox{\LARGE
-    This manual is outdated and must be revised!}
-\end{center}
 
+\section{Sanger Sequencing}
 
-\section{Introduction}
-\label{sec:introduction}
+Sanger sequencing remains a cornerstone of genomic studies due to its high accuracy and reliability. However, the manual analysis of chromatograms and sequence data has traditionally been labor-intensive and prone to human error. Recent advancements have introduced automated tools and methodologies to streamline this process, with artificial intelligence (AI) playing a transformative role in enhancing efficiency and accuracy.
 
-This Chapter describes how to use the \gls{novathesis}\ template.  It is assumed that you have a working \index{installation} of \LaTeX, either local (in your own computer) or remote (in \Overleaf), and that you were able to generate a PDF for the default configuration of the template: a PhD thesis for \gls{FCT}.
+\section{Automated Sequence Alignment}
+Tools like DNASTAR's SeqMan Ultra and Geneious have become benchmarks in sequence alignment, offering robust algorithms capable of assembling sequences into contigs and generating consensus sequences. These tools integrate features such as ClustalO, MUSCLE, MAFFT, and LASTZ algorithms to support precise alignment and visualization.
 
+\section{AI in DNA Sequence Analysis}
+Machine learning (ML) and AI have emerged as powerful technologies in genomic data analysis. ML algorithms are utilized for alignment, classification, clustering, and pattern mining, significantly improving the efficiency of DNA sequence analysis. AI techniques also enhance sequencing accuracy, particularly in detecting genetic variations and anomalies.
+
+\section{Automated Pipelines for Sanger Sequencing}
+Automated pipelines such as the Automated Sanger Analysis Pipeline (ASAP) and SangeR have revolutionized the processing of Sanger sequencing data. These tools facilitate rapid data analysis with minimal user intervention, allowing for high-throughput and reproducible results.
+
+\section{Online Accessibility of Sequencing Tools}
+The proliferation of online tools has democratized access to sequencing analysis. Tools like Champuru 2 provide web-based platforms for analyzing mixed Sanger chromatograms, making advanced functionalities accessible to a broader audience.
+
+\section{Automation in DNA Sequencing Laboratories}
+Automation in modern DNA sequencing laboratories has increased sample throughput, enhanced reproducibility, and reduced human error. These advancements enable precise sample tracking and high-throughput sequencing, meeting the demands of large-scale genomic studies.
 
 \section{Quick Start}
 \label{sec:quick_started}
-
+ee
 \subsection{With a Local \LaTeX\ Installation} % (fold)
 \label{sub:with_a_local_latex_installation}
 
-Follow these steps to get started with a local \LaTeX\ installation:
 
 \begin{enumerate}
   \item Download \LaTeX.  There are two major \LaTeX\ distributions — \href{https://miktex.org/}{\MikTeX} and \href{https://www.tug.org/texlive/}{\TeXLive} — that share lots of similarity, and \LaTeX\ documents are portable between them. This means that, for most users, both systems are equally usable.
