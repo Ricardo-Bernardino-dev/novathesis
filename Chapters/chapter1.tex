@@ -13,150 +13,89 @@
 
 \prependtographicspath{{Chapters/Figures/Covers/}}
 
+In this initial chapter, the motivation for automating critical aspects of the Sanger sequencing pipeline is explored in detail. We discuss the operational challenges faced by laboratory personnel in manually verifying DNA sequencing results, the potential for artificial intelligence (AI) to alleviate these challenges, and the overall significance of introducing automated solutions in the context of genomic research.
+
+The chapter also establishes the context in which this thesis was developed, explaining the collaboration between the company and the university to address specific problems in sequencing workflows. The importance of minimizing errors, optimizing throughput, and improving accuracy in genomic sequencing is emphasized, setting the stage for the problem addressed in this thesis.
+
+Following the context, the defined objectives of the thesis are outlined, detailing the deliverables and results expected from this research. Finally, a brief overview of the thesis document's structure is provided to guide the reader through the subsequent chapters, ensuring a clear understanding of the overall thesis plan.
 
 \section{Motivation}
 \label{sec:Motivation}
 
-The ever-growing demand for efficient and accurate DNA sequencing solutions has highlighted the limitations of traditional methods, particularly in high-throughput environments. Sanger sequencing remains a widely used technique due to its reliability and precision. However, the manual verification of alignment results introduces bottlenecks that hinder the scalability and efficiency of laboratories, especially those handling extensive genomic datasets.
+Artificial intelligence (AI) represents one of the most transformative advancements in modern science, reshaping various disciplines and enabling breakthroughs that were once deemed impossible. Since the earliest days of humanity, the quest to understand the world around us has driven innovation. Today, this quest extends to replicating human cognition and decision-making processes, as AI evolves to emulate the brain—the core processor of human rationality.
 
-This bottleneck is not merely an operational issue but a scientific challenge. As genomic research expands its applications in fields like medicine, agriculture, and biotechnology, the need for automated tools capable of minimizing errors and optimizing workflows becomes increasingly evident. By integrating artificial intelligence (AI) into these processes, laboratories can achieve new levels of efficiency and accuracy, ultimately advancing the frontiers of genomic research.
+\subsection{AI in Modern Science}
+AI has demonstrated its profound potential in numerous fields, including healthcare, engineering, and biology. In healthcare, AI systems have enhanced diagnostics and treatment planning \cite{esteva2017dermatologist}. Autonomous systems have revolutionized transportation and logistics, while optimization algorithms have improved efficiency across industries \cite{russell2010artificial}. Among these domains, biology stands uniquely poised to benefit from AI’s capabilities, particularly in genomics.
+
+Biology, as a data-rich science, faces the challenge of analyzing and interpreting vast datasets with precision. The automation, optimization, and decision-making facilitated by AI unlock opportunities to achieve milestones previously unattainable. For example, AI has accelerated drug discovery, improved our understanding of genetic diseases, and optimized agricultural practices \cite{senior2020protein, jumper2021highly}.
+
+\subsection{AI in Genomics}
+One specific sub-field of biology that benefits immensely from AI is genomics. DNA sequencing has revolutionized biological sciences, enabling breakthroughs in personalized medicine, agricultural biotechnology, and evolutionary studies. Among sequencing methods, Sanger sequencing remains the gold standard due to its precision, yet it presents several operational challenges in high-throughput workflows.
 
 \section{Context}
 \label{sec:Context}
 
-\subsection{Introduction to DNA}
-DNA (deoxyribonucleic acid) is the molecular blueprint for all living organisms, carrying the genetic instructions necessary for growth, development, and reproduction. The structure of DNA was famously elucidated by Watson and Crick in 1953, a discovery that revolutionized molecular biology \cite{watson_crick_dna}. DNA consists of two complementary strands coiled into a double helix, with nucleotide bases (adenine, thymine, cytosine, and guanine) forming the rungs of the helix \cite{khan_dna_structure}.
+Given that AI has non-stop increased relevance in the market, many companies seek to leverage it's capabilities for specific services, not only creating market share, but also providing competition, innovation, and bolstering the scienfitic advancement of the field.
+This thesis comes in context with one ambitious company that seeks to innovate AI's use in genomics.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.5\textwidth]{dna_double_helix.png}
-\caption{The structure of the DNA double helix.}
-\label{fig:dna_double_helix}
-\end{figure}
+\subsection{Introduction to STAB VIDA}
 
-\subsection{DNA Sequencing and Sanger Sequencing}
-DNA sequencing is the process of determining the precise order of nucleotides within a DNA molecule. Among the various sequencing methods, Sanger sequencing remains a widely utilized technique due to its accuracy and reliability. Developed by Frederick Sanger and colleagues in 1977, this method involves the selective incorporation of chain-terminating dideoxynucleotides (ddNTPs) by DNA polymerase during in vitro DNA replication \cite{sanger_method_original}.
+STAB VIDA is a leading company in the field of genomic sequencing, specializing in high-quality services for DNA and RNA analysis. With a strong focus on precision and reliability, STAB VIDA offers state-of-the-art sequencing technologies, including Sanger sequencing, which remains one of the most trusted methods for accurate DNA analysis \cite{Sanger1981}. The company caters to a wide range of clients, from academic researchers to pharmaceutical and agricultural industries, providing critical data for projects related to personalized medicine, evolutionary biology, and biotechnological innovations \cite{Fujimura2015}.
 
-Sequencing DNA is fundamental to understanding genetic information, enabling applications ranging from disease diagnosis and treatment to evolutionary biology \cite{turn0search0}. By deciphering the nucleotide order, scientists can identify mutations, study gene expression, and uncover genetic diversity.
+\subsection{Challenges in the Current Workflow}
 
-The steps of Sanger sequencing are enumerated as follows and illustrated in Figure \ref{fig:sanger_steps}: 
-\begin{enumerate} 
-\item \textbf{Primer annealing and chain extension}: DNA polymerase synthesizes complementary DNA strands using a primer and a mixture of deoxynucleotides (dNTPs). 
-\item \textbf{ddNTP binding and chain termination}: The incorporation of ddNTPs halts DNA synthesis at specific nucleotides, resulting in DNA fragments of varying lengths. 
-\item \textbf{Fluorescent labeling of DNA fragments}: The terminated DNA strands are fluorescently labeled for detection. 
-\item \textbf{Capillary gel electrophoresis and fluorescence detection}: DNA fragments are separated by capillary gel electrophoresis and identified based on fluorescence signals. 
-\item \textbf{Sequence analysis and reconstruction}: The nucleotide sequence is reconstructed from the fluorescence data and analyzed. 
-\end{enumerate}
+Despite the advanced technology used by STAB VIDA, the manual processes associated with DNA sequencing hold significant challenges. In particular, the verification of DNA sequencing results in 96-well plates is an error-prone and time-consuming task. Laboratory personnel manually check each well for abnormalities, such as abnormal signal scores, cross-well contamination, or unexpected DNA sequences that could indicate potential errors in the sequencing process \cite{Chakravarthy2020}.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{sanger_steps.png}
-\caption{Steps involved in Sanger sequencing \cite{biotechreality_sanger_steps}.}
-\label{fig:sanger_steps}
-\end{figure}
+These tasks, although essential for ensuring accurate and high-quality sequencing results, introduce bottlenecks into the workflow. With a growing demand for rapid sequencing services, manual checks not only delay the overall process but also increase the likelihood of human error \cite{Batista2021}. This, in turn, can affect the reliability of sequencing results delivered to clients, impacting both client satisfaction and the company's reputation \cite{Kumar2018}.
 
-To better understand the components involved in this process:
-\begin{itemize}
-    \item \textbf{DNA Template}: The single-stranded DNA to be sequenced.
-    \item \textbf{Primer}: A short single-stranded oligonucleotide complementary to the target sequence, serving as the starting point for DNA synthesis.
-    \item \textbf{DNA Polymerase}: An enzyme that synthesizes new DNA strands by adding nucleotides to the primer.
-    \item \textbf{Deoxynucleotides (dNTPs)}: Normal nucleotides (A, T, C, G) used to elongate the DNA strand.
-    \item \textbf{Dideoxynucleotides (ddNTPs)}: Modified nucleotides (ddATP, ddTTP, ddCTP, ddGTP) that terminate DNA strand synthesis upon incorporation due to the lack of a 3′-OH group.
-\end{itemize}
+\subsection{The Need for Automation at STAB VIDA}
 
-\subsection{The ABI3730xl DNA Sequencer}
-The ABI3730xl DNA sequencer is a high-throughput instrument widely used in genomics for Sanger sequencing. It automates the electrophoresis and fluorescence detection steps, corresponding to steps 3 and 4 of the Sanger sequencing process (Figure \ref{fig:sanger_steps}), allowing for the simultaneous processing of 96 samples in a single run \cite{smith_capillary_sequencing,abi3730xl_overview}. By leveraging this technology, laboratories can achieve precise and efficient DNA sequencing. 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.7\textwidth]{abi_3730xl_closed.png}
-\caption{A closed ABI3730xl capillary electrophoresis DNA analyzer.}
-\label{fig:abi_3730xl_closed}
-\end{figure}
+Given the increasing complexity and volume of sequencing tasks, STAB VIDA recognizes the urgent need to automate certain aspects of the workflow. Specifically, the company seeks to leverage artificial intelligence to enhance the detection of anomalies in sequencing data \cite{Jiang2021}. AI has the potential to significantly improve the speed and accuracy of this process by automatically flagging wells that exhibit unusual patterns or quality scores.
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.7\textwidth]{abi_3730xl_opened.png}
-\caption{A opened ABI3730xl capillary electrophoresis DNA analyzer.}
-\label{fig:abi_3730xl_opened}
-\end{figure}
+By automating the flagging process, STAB VIDA aims to:
 
+\begin{itemize} \item \textbf{Reduce manual labor}: Laboratory personnel will be freed from repetitive tasks and be able to focus on higher-order tasks that require human expertise, such as resolving flagged anomalies \cite{Yang2020}. \item \textbf{Increase accuracy and throughput}: AI-driven anomaly detection will reduce human error, improving the overall accuracy of sequencing results and enabling faster turnaround times \cite{Chen2019}. \item \textbf{Improve scalability}: Automation will allow STAB VIDA to handle larger volumes of sequencing data, facilitating growth and meeting the increasing demand for sequencing services \cite{Rajendran2021}. \end{itemize}
 
-\subsection{Role of Artificial Intelligence in DNA Analysis}
-Artificial intelligence (AI) revolutionizes genomic research by enhancing the accuracy and efficiency of data analysis. Machine learning (ML) models, trained on extensive genomic datasets, excel at recognizing patterns and anomalies. In Sanger sequencing, AI can:
-\begin{itemize}
-\item Detect mislabeled or erroneous sequences.
-\item Automate anomaly identification in 96-well plate outputs.
-\item Reduce human intervention while improving data reliability.
-\end{itemize}
+The collaboration between STAB VIDA and the university has thus emerged as a critical step in addressing these challenges. This thesis, focusing on the development and deployment of an AI-powered tool for sequencing anomaly detection, directly aligns with STAB VIDA’s vision for operational efficiency and enhanced service quality \cite{Sheng2018}.
 
-Ethical considerations must accompany AI integration to safeguard data privacy, address biases, and ensure equitable access to technology. The synergy between AI and DNA sequencing promises advancements in precision medicine and genomics.
+\subsection{AI-Powered Solutions for Sequencing Workflows}
 
-\subsection{Machine Learning and Deep Learning in Genomics}
-Machine Learning (ML) and Deep Learning (DL) are subfields of Artificial Intelligence (AI) that have revolutionized various scientific disciplines, including genomics, in which both of these fields have transformed the landscape of genomic research \cite{ml_genomics_review}. These computational approaches enable systems to learn patterns and make predictions based on large datasets, bypassing the need for explicitly programmed instructions.
-ML algorithms, such as support vector machines and random forests, excel in identifying patterns within large datasets, while DL models, like convolutional neural networks (CNNs), are adept at analyzing complex, high-dimensional data \cite{libbrecht_ml_genomics,dl_methods_genomics}.
+The AI solution proposed in this thesis is designed to integrate seamlessly into the current sequencing workflow at STAB VIDA. By analyzing sequencing data from the company's ABI3730xl sequencers, the AI tool will automatically flag wells that deviate from expected patterns based on specific criteria, such as signal quality or sequence consistency \cite{Gokcay2019}. These flagged wells will then be quarantined for human review, where laboratory personnel can investigate and resolve any issues that might arise.
 
-\paragraph{Machine Learning:}
-ML refers to algorithms that improve their performance on a task with experience. In the context of DNA sequencing:
-\begin{itemize}
-\item Supervised learning algorithms are trained using labeled datasets, such as annotated DNA sequences, to classify or predict sequence anomalies.
-\item Unsupervised learning algorithms, like clustering methods, identify patterns in unlabeled data, such as grouping similar DNA sequences.
-\item Reinforcement learning methods optimize decision-making processes, like adjusting sequencing parameters for improved accuracy.
-\end{itemize}
+Key benefits of this AI-driven solution include:
 
-\paragraph{Deep Learning:}
-DL, a subset of ML, uses artificial neural networks inspired by the human brain. These networks, especially when designed as deep architectures, are particularly effective in handling large and complex datasets such as genomic data. In Sanger sequencing:
-\begin{itemize}
-\item Convolutional Neural Networks (CNNs) can process visual data from electropherograms to identify signal anomalies.
-\item Recurrent Neural Networks (RNNs) or their advanced variants (e.g., Long Short-Term Memory networks, LSTMs) are ideal for analyzing sequential data, such as nucleotide chains.
-\item Autoencoders and Generative Adversarial Networks (GANs) are employed for noise reduction and synthetic data generation, enhancing training datasets.
-\end{itemize}
+\begin{itemize} \item \textbf{Automated anomaly detection}: The AI tool will automatically identify and flag wells exhibiting abnormalities, such as contamination, poor signal quality, or unusual DNA sequences \cite{Wu2020}. \item \textbf{Detailed reporting}: For each flagged well, the system will provide detailed explanations and reasons for the anomaly, enabling more efficient review and resolution \cite{Zhang2021}. \item \textbf{Integration with existing workflows}: The tool will be designed to work within STAB VIDA’s current sequencing infrastructure, ensuring minimal disruption to ongoing operations and enabling smooth adoption by laboratory staff \cite{Chen2021}. \end{itemize}
 
-In genomics, these techniques are employed for tasks such as sequence alignment, variant calling, and the identification of genetic mutations \cite{ml_dna_applications}. The integration of AI into Sanger sequencing workflows, as in this thesis, enables the automation of error detection and data validation, enhancing the accuracy and efficiency of sequencing processes \cite{ai_sanger_sequencing,esteva_ai_genomics}.
-
-\paragraph{Applications in Sanger Sequencing:}
-Integrating ML and DL into Sanger sequencing workflows enables:
-\begin{itemize}
-\item Automated classification of sequencing errors, such as those caused by fluorescent signal overlap or ddNTP misincorporation.
-\item Enhanced post-sequencing analysis to flag inaccurate well outputs in 96-well plates.
-\item Streamlined data analysis pipelines, reducing the time and labor required for manual verification.
-\end{itemize}
-
-The combination of these AI-driven methodologies with established sequencing technologies, such as the ABI3730xl, provides a robust framework for addressing critical challenges in genomic research. It bridges the gap between raw sequencing data and actionable biological insights, reinforcing the importance of interdisciplinary approaches in modern science.
-  
-\subsection{Broader Scientific Implications}
-Studying DNA and developing advanced sequencing tools contribute to:
-\begin{itemize}
-\item \textbf{Precision Medicine}: Personalizing treatments based on genetic profiles.
-\item \textbf{Evolutionary Biology}: Understanding species evolution and genetic diversity.
-\item \textbf{Agriculture}: Enhancing crop yields and pest resistance through genetic insights.
-\item \textbf{Biotechnology}: Innovating in synthetic biology and gene editing applications.
-\end{itemize}
-
-Through the combination of traditional techniques, cutting-edge sequencing technologies, and AI, this thesis addresses the critical challenge of post-sequencing analysis, pushing the boundaries of what is possible in modern genomics.
+This thesis will therefore contribute to STAB VIDA’s mission to improve sequencing workflows, reduce operational inefficiencies, and enhance the quality and reliability of its sequencing services.
+Firstly, some samples need human intervention, namely those that require purification or exhibit poor concentration levels, resulting in the need for dilution or correction. This human interaction introduces the risk of error, potentially affecting the output sequence and, in the case of purification, even contaminating neighboring samples.
 
 \section{Objectives}
 \label{sec:Objectives}
 
-The primary goal of this thesis is to develop a tool that automates the verification of alignment results obtained from Sanger sequencing. The specific objectives include:
+The primary objective of this thesis is to develop an AI-powered tool that automates the verification of alignment results in Sanger sequencing. This tool will address inefficiencies in the manual processes currently employed and enhance the overall reliability of sequencing workflows. Specific objectives include:
 
 \begin{itemize}
-  \item Designing an AI algorithm capable of detecting anomalies and homologous sequences in alignment data.
-  \item Training the algorithm using real-world datasets from ABI3730xl sequencers 96-well plates.
-  \item Designing an AI algorithm capable of detecting anomalies and homologous sequences in alignment data.
-  \item Training the algorithm using real-world datasets from ABI3730xl sequencers 96-well plates.
-  \item Validating the tools performance against traditional manual verification methods.
-  \item Deploying the tool via an online platform to ensure accessibility for laboratories worldwide.
+  \item \textbf{Data Exploration and Preprocessing}: Use data science techniques to explore, determine, and select the relevant data for model training, ensuring the data is pre-processed effectively.
+  \item \textbf{Algorithm Development}: Design a robust AI algorithm capable of detecting anomalies in sequencing data, including signal inconsistencies, contamination, and unexpected DNA sequences.
+  \item \textbf{Model Training and Validation}: Train and validate the AI algorithm using real-world datasets obtained from ABI3730xl sequencers, ensuring its applicability in practical laboratory settings.
+  \item \textbf{Performance Evaluation}: Compare the AI tool's accuracy and efficiency against traditional manual verification methods, demonstrating its effectiveness in a real-world context.
+  \item \textbf{Deployment Strategy}: Develop an accessible online platform for deploying the AI tool, ensuring seamless integration into existing laboratory workflows and maximizing user adoption.
 \end{itemize}
+
+Beyond these technical objectives, the thesis seeks to highlight the transformative potential of AI in genomics, demonstrating how interdisciplinary approaches can address complex challenges at the intersection of biology and computer science.
 
 \section{Structure}
 \label{sec:Structure}
 
-This document is organized as follows:
+This document is organized into four main chapters, each focusing on a critical aspect of the thesis:
 
 \begin{itemize}
-  \item Introduction: Provides the motivation, context, objectives, and structure of the thesis.
-  \item State of the Art \& Related Work: Reviews existing literature and technologies in Sanger sequencing and AI applications in genomics.
-  \item Methodology: Details the design and implementation of the proposed AI driven tool, including data collection, model training, and deployment.
-  \item Planning: Presents the planning of the proposed work, composed by desired checkpoints and finish dates.
-  \end{itemize}
+\item \textbf{Introduction}: Provides the motivation, context, objectives, and structure of the thesis.
+\item \textbf{State of the Art \& Related Work}: Reviews existing literature and technologies in Sanger sequencing and AI applications in genomics.
+\item \textbf{Proposal}: Details the design and implementation of the proposed AI driven tool, including data collection, model training, and deployment.
+\item \textbf{Planning}: Presents the planning of the proposed work, composed by desired checkpoints and finish dates.
+\end{itemize}
+
+Each chapter is designed to guide the reader through the research journey, from identifying the problem to proposing and validating a solution. This structured approach ensures clarity and coherence, making the thesis accessible to both technical and non-technical audiences.
+
 % subsection suggestions_bugs_and_feature_requests (end)
