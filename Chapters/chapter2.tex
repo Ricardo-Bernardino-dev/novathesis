@@ -229,82 +229,57 @@ By adhering to this principle, one can avoid unnecessary complexity and focus on
 In the context of machine learning and deep learning, choosing the right model depends on the specific problem, available data, and computational resources. While complex models like deep neural networks are powerful, they should be used judiciously. For many tasks, simpler models may offer equal or better performance with fewer risks of overfitting, lower computational costs, and greater interpretability. A thoughtful approach to model selection ensures that the chosen algorithm is both efficient and appropriate for the task at hand.
 
 \section{Related Work}
-Artificial Intelligence (AI) techniques have revolutionized genomics by enabling automation and optimization of DNA analysis processes. This chapter examines AI-driven methods closely related to the scope of this thesis, which focuses on automating the quarantining of DNA wells in a 96-well plate format. Two studies are discussed in depth, followed by a comparative analysis.
-The application of AI in genomics spans clustering, classification, and anomaly detection. Among these, two notable works are:
+The integration of Artificial Intelligence (AI) in genomics has brought significant advancements, particularly in tasks like clustering, classification, and anomaly detection. In the context of this thesis, which aims to automate the quarantining of DNA wells in a 96-well plate format, AI can play a crucial role by identifying patterns and organizing data. However, one of the major challenges in applying AI to genomics is the absence of labeled data. Unlike supervised learning tasks, which rely on pre-labeled data for training, the task at hand involves clustering DNA wells without any prior labeling. This requires the use of unsupervised learning techniques, which can uncover hidden structures or patterns in data without the need for explicit labels.
 
-\begin{enumerate}
-    \item \textbf{DeepConsensus: Deep Learning for DNA Sequence Correction}: This study leverages convolutional neural networks (CNNs) to correct errors in raw DNA sequences, improving downstream analysis \cite{deepconsensus}.
-    \item \textbf{ClusterGAN: Semi-Supervised Clustering for Genomic Data}: This method combines generative adversarial networks (GANs) with clustering to group similar genomic sequences while mitigating the need for extensive labeled data \cite{clustergan}.
-\end{enumerate}
+The following section delves into two notable works in the field of AI-driven genomic analysis: DeepConsensus, which focuses on DNA sequence correction using deep learning, and ClusterGAN, a semi-supervised method for genomic data clustering. These approaches, while impactful in their respective areas, are not directly applicable to the unsupervised learning task of this thesis. A comparative analysis is presented to evaluate the most suitable techniques for automating the quarantining process of DNA wells.
 
 \subsection{DeepConsensus: Deep Learning for DNA Sequence Correction}
+The \textbf{DeepConsensus} framework is designed to address errors in raw DNA sequences, using convolutional neural networks (CNNs) to improve the accuracy of sequenced data. This method targets the correction of sequencing errors, a crucial step before conducting downstream analyses such as variant calling and alignment \cite{deepconsensus}.
 
-This study introduces a deep learning framework, DeepConsensus, designed to enhance the accuracy of raw DNA sequences obtained from sequencers.
+DeepConsensus operates on raw sequencing reads, which are numerically encoded and passed through the CNN model. The model is trained to recognize and correct errors in these reads, outputting corrected DNA sequences that can be more reliably used in subsequent genomic applications. This process significantly reduces the error rates in sequencing, ensuring that the results are more accurate and trustworthy for tasks such as alignment and variant identification.
 
-\textbf{Key Features:}
-\begin{itemize}
-    \item \textbf{Model Architecture:} Employs convolutional neural networks (CNNs) to learn patterns of errors in sequencing data.
-    \item \textbf{Input Data:} Raw sequencing reads, encoded numerically for model compatibility.
-    \item \textbf{Output:} Corrected sequences that improve downstream processes like alignment and variant calling.
-\end{itemize}
-
-\textbf{Strengths:}
-\begin{itemize}
-    \item Substantial reduction in sequencing errors.
-    \item Applicability across different sequencer technologies.
-    \item Improved data quality for downstream genomic applications.
-\end{itemize}
-
-\textbf{Limitations:}
-\begin{itemize}
-    \item High computational cost for training deep models.
-    \item Requires large datasets for optimal performance.
-\end{itemize}
+However, this approach comes with limitations. DeepConsensus is inherently supervised, requiring large amounts of labeled data to train the model effectively. This is a significant challenge in the context of this thesis, as the data available is unlabeled. Additionally, the model's computational complexity makes it unsuitable for large-scale, real-time applications where speed and efficiency are crucial. While DeepConsensus presents an innovative solution to sequence correction, it is not directly applicable to the unsupervised clustering of DNA wells, which is the focus of this work.
 
 \subsection{ClusterGAN: Semi-Supervised Clustering for Genomic Data}
+The \textbf{ClusterGAN} method offers a unique approach to genomic data clustering by combining generative adversarial networks (GANs) with clustering objectives. The model includes a generator and discriminator, alongside a clustering head that helps group genomic sequences based on their similarity \cite{clustergan}.
 
-ClusterGAN combines generative adversarial networks (GANs) with clustering objectives to categorize genomic data with minimal supervision.
+While ClusterGAN is effective at handling unlabeled genomic data, it is still considered semi-supervised because it requires some labeled data to guide the clustering process. This makes it less suitable for the task at hand, where there is no labeled data available. Additionally, GAN-based models can be unstable during training, and their interpretability is often limited, which presents challenges when applying the model in practice.
 
-\textbf{Key Features:}
-\begin{itemize}
-    \item \textbf{Architecture:} Incorporates a generator and discriminator, alongside a clustering head for unsupervised grouping.
-    \item \textbf{Input Data:} Encoded genomic sequences in a numerical format.
-    \item \textbf{Output:} Clusters of genomic sequences based on similarity.
-\end{itemize}
+Furthermore, the computational demands of training GANs can be prohibitive, especially when dealing with large genomic datasets. While ClusterGAN shows promise in clustering genomic data with minimal supervision, its reliance on some labeled data and the inherent instability of GAN models make it a less ideal choice for the current task, which requires a purely unsupervised approach.
+\subsection{Unsupervised Clustering Approaches for Genomic Data}
+Given the nature of the data in this thesis, which is unlabeled, the focus shifts toward unsupervised learning techniques. Two of the most widely used and effective unsupervised clustering methods are \textbf{K-Means} and \textbf{DBSCAN}, both of which have been successfully applied in genomic studies \cite{macqueen1967classification, ester1996density}.
 
-\textbf{Strengths:}
-\begin{itemize}
-    \item Effectively handles unlabeled genomic data.
-    \item Learns latent representations of sequences for clustering.
-    \item Adaptable to various types of genomic datasets.
-\end{itemize}
+\subsubsection{K-Means Clustering}
+K-Means Clustering is one of the simplest and most widely used unsupervised learning algorithms. It groups data points into a predefined number of clusters (k) based on their similarity, typically measured by Euclidean distance. The algorithm iteratively assigns data points to the nearest cluster centroid, refining the cluster assignments until convergence.
 
-\textbf{Limitations:}
-\begin{itemize}
-    \item GAN training can be unstable.
-    \item Limited interpretability of learned latent features.
-\end{itemize}
+K-Means is a strong candidate for clustering DNA wells, especially when the number of clusters is known or can be reasonably estimated. The algorithm is computationally efficient and relatively simple to implement, which makes it an attractive choice for large genomic datasets. Its effectiveness is greatest when the data is relatively compact and spherical in shape, and when the clusters are well-separated from each other.
 
-\subsection{Comparison with Current Work}
+However, K-Means has limitations. It requires the number of clusters (k) to be specified in advance, which can be challenging if the structure of the data is unknown. Additionally, K-Means is sensitive to outliers, which could pose problems when dealing with noisy genomic data.
 
-A comparison between these related works and the approach of this thesis is summarized in Table \ref{tab:comparison}.
+\subsubsection{DBSCAN (Density-Based Spatial Clustering of Applications with Noise)}
+DBSCAN is another unsupervised clustering algorithm that is particularly effective for data with irregular cluster shapes and noise. Unlike K-Means, DBSCAN does not require the number of clusters to be predefined. Instead, it clusters data based on the density of points, identifying dense regions of the data as clusters and marking sparse regions as noise.
 
-\begin{table}[h]
-\centering
-\caption{Comparison of Related Works with Thesis Approach}
-\label{tab:comparison}
-\begin{tabular}{|l|l|l|l|}
-\hline
-\textbf{Aspect}              & \textbf{DeepConsensus}               & \textbf{ClusterGAN}                  & \textbf{Thesis Approach}             \\ \hline
-Algorithm                    & CNN-based Error Correction           & GAN-based Clustering                 & Similarity-Based Quarantining        \\ \hline
-Data Type                    & Raw Sequencing Reads                 & Encoded Genomic Sequences            & Numerical Data (e.g., concentrations, IDs) \\ \hline
-Supervision                  & Fully Supervised                     & Semi-Supervised                      & Unsupervised                        \\ \hline
-Output                       & Corrected DNA Sequences              & Clusters of Genomic Sequences        & Cluster and Quarantine Visualization  \\ \hline
-Scalability                  & Moderate                             & High                                 & High                                 \\ \hline
-Computational Cost           & High                                 & High                                 & Moderate                             \\ \hline
-\end{tabular}
-\end{table}
+The main advantage of DBSCAN is its ability to detect clusters of arbitrary shape, which is a significant benefit when the structure of the data is complex or irregular. Additionally, DBSCAN can effectively handle outliers by classifying them as noise.
+
+\subsection{Comparison with Thesis Approach}
+    \begin{table}[h]
+        \centering
+        \caption{Comparison of Related Works with Thesis Approach}
+        \label{tab:comparison}
+        \begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
+        \hline
+        \textbf{Aspect} & \textbf{DeepConsensus} & \textbf{ClusterGAN} & \textbf{Thesis Approach} \\ \hline
+        Algorithm & CNN-based Error Correction & GAN-based Clustering & Similarity-Based Quarantining \\ \hline
+        Data Type & Raw Sequencing Reads & Encoded Genomic Sequences & Numerical Data (e.g., concentrations, IDs) \\ \hline
+        Supervision & Fully Supervised & Semi-Supervised & Unsupervised \\ \hline
+        Output & Corrected DNA Sequences & Clusters of Genomic Sequences & Cluster and Quarantine Visualization \\ \hline
+        Scalability & Moderate & High & High \\ \hline
+        Computational Cost & High & High & Moderate \\ \hline
+        \end{tabular}
+        \end{table}
+
 
 \subsection{Conclusion}
+The review of related work reveals that methods like DeepConsensus and ClusterGAN, while valuable in specific contexts, are not directly applicable to the unsupervised nature of the task in this thesis. DeepConsensus relies on labeled data for error correction, and **ClusterGAN** requires semi-supervised learning, making both approaches unsuitable for the task of clustering unlabeled DNA wells.
 
-While DeepConsensus and ClusterGAN significantly contribute to error correction and clustering in genomic data, this thesis addresses a unique challenge: automating the quarantining process of DNA wells in 96-well plates. By integrating clustering and domain-specific constraints, the proposed method ensures practical applicability in genomic laboratories, enhancing scalability and robustness.
+The most appropriate unsupervised learning methods for this work are K-Means and DBSCAN. K-Means is particularly well-suited for situations where the number of clusters is known or can be estimated, and the data is relatively clean and spherical in shape. DBSCAN, on the other hand, offers greater flexibility, particularly for handling irregular cluster
