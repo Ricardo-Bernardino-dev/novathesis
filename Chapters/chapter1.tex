@@ -22,21 +22,19 @@ Following the context, the defined objectives of the thesis are outlined, detail
 \section{Motivation}
 \label{sec:Motivation}
 
-Artificial intelligence (AI) represents one of the most transformative advancements in modern science, reshaping various disciplines and enabling breakthroughs that were once deemed impossible. Since the earliest days of humanity, the quest to understand the world around us has driven innovation. Today, this quest extends to replicating human cognition and decision-making processes, as AI evolves to emulate the brain—the core processor of human rationality.
+DNA sequencing has become a cornerstone of modern science, driving advancements in fields such as medicine, agriculture, and evolutionary biology. The ability to decode genetic information has transformed our understanding of life, enabling breakthroughs in personalized medicine, disease diagnosis, and the development of targeted therapies \cite{green2015human}. In agriculture, sequencing has facilitated the engineering of crops with improved yield, resilience, and nutritional value, addressing critical challenges such as food security \cite{varshney2014genomics}. Similarly, in evolutionary biology, sequencing has provided unprecedented insights into the genetic diversity and history of species \cite{shendure2017dna}.
 
-\subsection{AI in Modern Science}
-AI has demonstrated its profound potential in numerous fields, including healthcare, engineering, and biology. In healthcare, AI systems have enhanced diagnostics and treatment planning \cite{esteva2017dermatologist}. Autonomous systems have revolutionized transportation and logistics, while optimization algorithms have improved efficiency across industries \cite{russell2010artificial}. Among these domains, biology stands uniquely poised to benefit from AI’s capabilities, particularly in genomics.
+Despite its transformative potential, DNA sequencing faces significant challenges. The process of generating and interpreting sequencing data is complex, labor-intensive, and prone to human error. Sanger sequencing, a widely used method known for its accuracy, involves multiple manual steps that can introduce inefficiencies and inaccuracies into the workflow. Laboratory personnel must meticulously verify sequencing results, a task that is both time-consuming and susceptible to oversight. These challenges are exacerbated by the growing demand for high-throughput sequencing, which places additional pressure on laboratory resources and increases the risk of errors \cite{chakravarthy2020challenges}.
 
-Biology, as a data-rich science, faces the challenge of analyzing and interpreting vast datasets with precision. The automation, optimization, and decision-making facilitated by AI unlock opportunities to achieve milestones previously unattainable. For example, AI has accelerated drug discovery, improved our understanding of genetic diseases, and optimized agricultural practices \cite{senior2020protein, jumper2021highly}.
+The consequences of these inefficiencies are far-reaching. In medicine, for example, errors in sequencing can lead to misdiagnoses or inappropriate treatments, potentially jeopardizing patient outcomes. In agricultural biotechnology, inaccuracies in sequencing data can delay the development of improved crop varieties, hindering efforts to address global food security. Similarly, in evolutionary biology, errors in sequencing can distort our understanding of genetic relationships and evolutionary processes \cite{kumar2018sequencing}.
 
-\subsection{AI in Genomics}
-One specific sub-field of biology that benefits immensely from AI is genomics. DNA sequencing has revolutionized biological sciences, enabling breakthroughs in personalized medicine, agricultural biotechnology, and evolutionary studies. Among sequencing methods, Sanger sequencing remains the gold standard due to its precision, yet it presents several operational challenges in high-throughput workflows.
+Addressing these challenges is critical to unlocking the full potential of DNA sequencing. By improving the accuracy, efficiency, and scalability of sequencing workflows, we can accelerate scientific discoveries and enhance the practical applications of genomics. Emerging technologies, such as artificial intelligence (AI), offer promising avenues for addressing these challenges. AI has demonstrated its potential to automate complex tasks, reduce human error, and enhance decision-making across various domains, including healthcare and biotechnology \cite{esteva2017dermatologist, senior2020protein}. Furthermore, artificial intelligence (AI) exhibits significant potential in domains characterized by large-scale datasets, particularly when such data contains discernible patterns and diverse variations. It's the ability of extracing meaningful insights from complex and heterogeneous data that enhances AI's value in addressing intricate challenges across various fields. In the context of DNA sequencing, AI-driven solutions could streamline the verification of sequencing results, enabling faster and more reliable analyses.
 
 \section{Context}
 \label{sec:Context}
 
 Given that AI has non-stop increased relevance in the market, many companies seek to leverage it's capabilities for specific services, not only creating market share, but also providing competition, innovation, and bolstering the scienfitic advancement of the field.
-This thesis comes in context with one ambitious company that seeks to innovate AI's use in genomics.
+This thesis is situated within the context of a collaboration between STAB VIDA, a leading company in genomic sequencing, and the university. The partnership aims to address specific inefficiencies in Sanger sequencing workflows, with a focus on improving accuracy, scalability, and operational efficiency. By combining academic research with industry expertise, this collaboration seeks to explore and implement existing AI mechanisms that can transform the field of genomics.
 
 \subsection{Introduction to STAB VIDA}
 
@@ -44,10 +42,11 @@ STAB VIDA is a leading company in the field of genomic sequencing, specializing 
 
 \subsection{Challenges in the Current Workflow}
 
-Despite the advanced technology used by STAB VIDA, the manual processes associated with DNA sequencing hold significant challenges. In particular, the verification of DNA sequencing results in 96-well plates is an error-prone and time-consuming task. Laboratory personnel manually check each well for abnormalities, such as abnormal signal scores, cross-well contamination, or unexpected DNA sequences that could indicate potential errors in the sequencing process \cite{Chakravarthy2020}.
+Despite the advanced technology used by STAB VIDA, the manual processes associated with DNA sequencing present significant challenges. While the company’s clients provide the DNA samples to be sequenced, the preparation of these samples often requires additional human intervention before the sequencing process can begin. Depending on the type of service requested, some samples must be mixed with specific primers, while others require adjustments to their concentration levels. These preparatory steps, though critical for ensuring successful sequencing, introduce opportunities for human error that can compromise the quality of the final results.
+For example, samples with high concentration levels can contaminate neighboring samples during the sequencing process. This contamination not only affects the reliability of the sequencing results but also necessitates repeat analyses, further delaying the workflow and increasing costs. These manual interventions exacerbate the challenges faced by laboratory personnel.
+In addition to these preparatory steps, the verification of DNA sequencing results in 96-well plates is another error-prone and time-consuming task. Laboratory personnel must manually inspect each well for abnormalities, such as abnormal signal scores, cross-well contamination, or unexpected DNA sequences that could indicate potential errors in the sequencing process \cite{Chakravarthy2020}. These manual checks, while essential for ensuring accurate and high-quality sequencing results, introduce bottlenecks into the workflow. With the increasing demand for rapid sequencing services, the time and effort required for manual verification grow proportionally, raising the likelihood of human error \cite{Batista2021}. Such errors can compromise the reliability of sequencing results delivered to clients, impacting both client satisfaction and the company’s reputation \cite{Kumar2018}.
 
-These tasks, although essential for ensuring accurate and high-quality sequencing results, introduce bottlenecks into the workflow. With a growing demand for rapid sequencing services, manual checks not only delay the overall process but also increase the likelihood of human error \cite{Batista2021}. This, in turn, can affect the reliability of sequencing results delivered to clients, impacting both client satisfaction and the company's reputation \cite{Kumar2018}.
-
+The combination of manual sample preparation and post-sequencing verification creates a workflow that is not only labor-intensive but also vulnerable to inconsistencies. Addressing these challenges is critical to improving the accuracy, efficiency, and scalability of STAB VIDA’s sequencing services.
 \subsection{The Need for Automation at STAB VIDA}
 
 Given the increasing complexity and volume of sequencing tasks, STAB VIDA recognizes the urgent need to automate certain aspects of the workflow. Specifically, the company seeks to leverage artificial intelligence to enhance the detection of anomalies in sequencing data \cite{Jiang2021}. AI has the potential to significantly improve the speed and accuracy of this process by automatically flagging wells that exhibit unusual patterns.
@@ -60,18 +59,17 @@ By automating the flagging process, STAB VIDA aims to:
   \item \textbf{Improve scalability}: Automation will allow STAB VIDA to handle larger volumes of sequencing data, facilitating growth and meeting the increasing demand for sequencing services \cite{Rajendran2021}.
 \end{itemize}
 
-The collaboration between STAB VIDA and the university has thus emerged as a critical step in addressing these challenges. This thesis, focusing on the development and deployment of an AI-powered tool for sequencing anomaly detection, directly aligns with STAB VIDA’s vision for operational efficiency and enhanced service quality \cite{Sheng2018}.
+The collaboration between STAB VIDA and the university has thus emerged as a critical step in addressing these challenges. This thesis, which focuses on the study and application of existing AI tools for anomaly detection in sequencing data, aligns directly with STAB VIDA’s goals of operational efficiency and enhanced service quality \cite{Sheng2018}.
 
 \subsection{AI-Powered Solutions for Sequencing Workflows}
 
-The AI solution proposed in this thesis is designed to integrate seamlessly into the current sequencing workflow at STAB VIDA. By analyzing sequencing data from the company's ABI3730xl sequencers, the AI tool will automatically flag wells that deviate from expected patterns based on specific criteria, such as signal quality or sequence consistency \cite{Gokcay2019}. These flagged wells will then be quarantined for human review, where laboratory personnel can investigate and resolve any issues that might arise.
+The proposed solution leverages existing AI mechanisms to integrate seamlessly into STAB VIDA’s existing sequencing workflows. By analyzing sequencing data from the company's ABI3730xl sequencers, the AI tool will automatically flag wells that deviate from expected patterns based on specific criteria, such as signal quality or sequence consistency \cite{Gokcay2019}. These flagged wells will then be quarantined for human review, where laboratory personnel can investigate and resolve any issues that might arise.
 
 Key benefits of this AI-driven solution include:
 
 \begin{itemize} \item \textbf{Automated anomaly detection}: The AI tool will automatically identify and flag wells exhibiting abnormalities, such as contamination, poor signal quality, or unusual DNA sequences \cite{Wu2020}. \item \textbf{Detailed reporting}: For each flagged well, the system will provide detailed explanations and reasons for the anomaly, enabling more efficient review and resolution \cite{Zhang2021}. \item \textbf{Integration with existing workflows}: The tool will be designed to work within STAB VIDA’s current sequencing infrastructure, ensuring minimal disruption to ongoing operations and enabling smooth adoption by laboratory staff \cite{Chen2021}. \end{itemize}
 
-This thesis will therefore contribute to STAB VIDA’s mission to improve sequencing workflows, reduce operational inefficiencies, and enhance the quality and reliability of its sequencing services.
-Firstly, some samples need human intervention, namely those that require purification or exhibit poor concentration levels, resulting in the need for dilution or correction. This human interaction introduces the risk of error, potentially affecting the output sequence and, in the case of purification, even contaminating neighboring samples.
+This thesis will contribute to STAB VIDA’s mission to improve sequencing workflows, reduce operational inefficiencies, and enhance the quality and reliability of its sequencing services. By focusing on the study and implementation of existing AI mechanisms, the proposed solution has the potential to set a new standard for accuracy and efficiency in genomic sequencing.
 
 \section{Objectives}
 \label{sec:Objectives}
@@ -80,13 +78,13 @@ The primary objective of this thesis is to develop an AI-powered tool that autom
 
 \begin{itemize}
   \item \textbf{Data Exploration and Preprocessing}: Use data science techniques to explore, determine, and select the relevant data for model training, ensuring the data is pre-processed effectively.
-  \item \textbf{Model Development}: Research and Implement a robust AI algorithm capable of detecting anomalies in sequencing data, including signal inconsistencies, contamination, and unexpected DNA sequences.
+  \item \textbf{Model Investigation}: Research an already existing robust AI algorithm fit and capable of detecting anomalies in the sequencing data, including signal inconsistencies, contamination, and unexpected DNA sequences.
   \item \textbf{Model Training and Validation}: Train and validate the AI algorithm using real-world datasets obtained from ABI3730xl sequencers, ensuring its applicability in practical laboratory settings.
   \item \textbf{Performance Evaluation}: Compare the AI tool's accuracy and efficiency against traditional manual verification methods, demonstrating its effectiveness in a real-world context.
   \item \textbf{Deployment Strategy}: Develop an accessible online platform for deploying the AI tool, ensuring seamless integration into existing laboratory workflows and maximizing user adoption.
 \end{itemize}
 
-Beyond these technical objectives, the thesis seeks to highlight the transformative potential of AI in genomics, demonstrating how interdisciplinary approaches can address complex challenges at the intersection of biology and computer science.
+By achieving these objectives, this research will not only improve the efficiency of STAB VIDA’s sequencing workflows but also contribute to the broader adoption of AI in genomics, paving the way for future innovations in the field.
 
 \section{Structure}
 \label{sec:Structure}
@@ -101,5 +99,5 @@ This document is organized into four main chapters, each focusing on a critical 
 \end{itemize}
 
 Each chapter is designed to guide the reader through the research journey, from identifying the problem to proposing and validating a solution. This structured approach ensures clarity and coherence, making the thesis accessible to both technical and non-technical audiences.
-
+The following chapter will delve into the state of the art, reviewing existing literature and technologies relevant to this research.
 % subsection suggestions_bugs_and_feature_requests (end)
