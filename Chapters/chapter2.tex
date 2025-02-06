@@ -229,57 +229,92 @@ By adhering to this principle, one can avoid unnecessary complexity and focus on
 In the context of machine learning and deep learning, choosing the right model depends on the specific problem, available data, and computational resources. While complex models like deep neural networks are powerful, they should be used judiciously. For many tasks, simpler models may offer equal or better performance with fewer risks of overfitting, lower computational costs, and greater interpretability. A thoughtful approach to model selection ensures that the chosen algorithm is both efficient and appropriate for the task at hand.
 
 \section{Related Work}
-The integration of Artificial Intelligence (AI) in genomics has brought significant advancements, particularly in tasks like clustering, classification, and anomaly detection. In the context of this thesis, which aims to automate the quarantining of DNA wells in a 96-well plate format, AI can play a crucial role by identifying patterns and organizing data. However, one of the major challenges in applying AI to genomics is the absence of labeled data. Unlike supervised learning tasks, which rely on pre-labeled data for training, the task at hand involves clustering DNA wells without any prior labeling. This requires the use of unsupervised learning techniques, which can uncover hidden structures or patterns in data without the need for explicit labels.
+The integration of Artificial Intelligence (AI) in genomics has revolutionized the field, enabling breakthroughs in DNA sequencing, variant calling, and anomaly detection. For this thesis, which aims to automate the detection and quarantining of anomalous DNA wells in a 96-well plate format, AI offers powerful tools to address the challenges of manual verification and error-prone workflows. Specifically, unsupervised and semi-supervised learning techniques are highly relevant, as they can identify patterns and anomalies in unlabeled sequencing data.
 
-The following section delves into two notable works in the field of AI-driven genomic analysis: DeepConsensus, which focuses on DNA sequence correction using deep learning, and ClusterGAN, a semi-supervised method for genomic data clustering. These approaches, while impactful in their respective areas, are not directly applicable to the unsupervised learning task of this thesis. A comparative analysis is presented to evaluate the most suitable techniques for automating the quarantining process of DNA wells.
+This section explores two state-of-the-art AI algorithms that are best suited for the task: Isolation Forest and DBSCAN. Both algorithms are unsupervised and excel at identifying anomalies in complex datasets. A comparative analysis is presented to evaluate their suitability for automating the quarantining process of DNA wells.
 
-\subsection{DeepConsensus: Deep Learning for DNA Sequence Correction}
-The \textbf{DeepConsensus} framework is designed to address errors in raw DNA sequences, using convolutional neural networks (CNNs) to improve the accuracy of sequenced data. This method targets the correction of sequencing errors, a crucial step before conducting downstream analyses such as variant calling and alignment \cite{deepconsensus}.
+\subsection{Isolation Forest: Unsupervised Anomaly Detection}
+Isolation Forest is an unsupervised anomaly detection algorithm that isolates anomalies instead of profiling normal data points. It works by randomly selecting a feature and then randomly selecting a split value between the maximum and minimum values of the selected feature. Anomalies are identified as data points that require fewer splits to be isolated \cite{liu2008isolation}.
 
-DeepConsensus operates on raw sequencing reads, which are numerically encoded and passed through the CNN model. The model is trained to recognize and correct errors in these reads, outputting corrected DNA sequences that can be more reliably used in subsequent genomic applications. This process significantly reduces the error rates in sequencing, ensuring that the results are more accurate and trustworthy for tasks such as alignment and variant identification.
+\paragraph{Methodology}
+Isolation Forest operates by constructing an ensemble of isolation trees. Each tree is built by recursively partitioning the data space until all data points are isolated. Anomalies, which are typically few and different, are isolated closer to the root of the tree, while normal points require more splits to be isolated. The anomaly score for each data point is calculated based on the average path length from the root to the leaf across all trees.
 
-However, this approach comes with limitations. DeepConsensus is inherently supervised, requiring large amounts of labeled data to train the model effectively. This is a significant challenge in the context of this thesis, as the data available is unlabeled. Additionally, the model's computational complexity makes it unsuitable for large-scale, real-time applications where speed and efficiency are crucial. While DeepConsensus presents an innovative solution to sequence correction, it is not directly applicable to the unsupervised clustering of DNA wells, which is the focus of this work.
+\paragraph{Strengths}
+\begin{itemize}
+\item \textbf{Anomaly Detection}: Isolation Forest is specifically designed for anomaly detection, making it highly effective for identifying outliers in sequencing data.
+\item \textbf{Handles Mixed Data Types}: While traditionally used for numerical data, Isolation Forest can be adapted to handle categorical data (e.g., primer types) and sequence data by encoding them appropriately.
+\item \textbf{Explainability}: The algorithm provides anomaly scores, which can be used to explain why a well was flagged (e.g., "High concentration level detected" or "Unexpected primer used").
+\item \textbf{Scalability}: Isolation Forest is computationally efficient and scales well to large datasets, making it suitable for high-throughput sequencing workflows.
+\item \textbf{Robustness to Noise}: The algorithm is robust to noisy data, which is important given the potential for errors in sequencing data.
+\end{itemize}
 
-\subsection{ClusterGAN: Semi-Supervised Clustering for Genomic Data}
-The \textbf{ClusterGAN} method offers a unique approach to genomic data clustering by combining generative adversarial networks (GANs) with clustering objectives. The model includes a generator and discriminator, alongside a clustering head that helps group genomic sequences based on their similarity \cite{clustergan}.
+\paragraph{Limitations}
+\begin{itemize}
+\item \textbf{Feature Engineering}: The algorithm requires careful feature engineering to handle mixed data types effectively.
+\item \textbf{Parameter Tuning}: The performance of Isolation Forest depends on the choice of parameters, such as the number of trees and the contamination rate, which may require tuning.
+\end{itemize}
 
-While ClusterGAN is effective at handling unlabeled genomic data, it is still considered semi-supervised because it requires some labeled data to guide the clustering process. This makes it less suitable for the task at hand, where there is no labeled data available. Additionally, GAN-based models can be unstable during training, and their interpretability is often limited, which presents challenges when applying the model in practice.
+\paragraph{Relevance to Thesis}
+Isolation Forest is highly relevant to the unsupervised nature of the task in this thesis. Its ability to detect anomalies in mixed data types (e.g., numerical and categorical) aligns well with the goal of automating the quarantining of DNA wells. Additionally, its explainability and scalability make it a strong candidate for high-throughput sequencing workflows.
 
-Furthermore, the computational demands of training GANs can be prohibitive, especially when dealing with large genomic datasets. While ClusterGAN shows promise in clustering genomic data with minimal supervision, its reliance on some labeled data and the inherent instability of GAN models make it a less ideal choice for the current task, which requires a purely unsupervised approach.
-\subsection{Unsupervised Clustering Approaches for Genomic Data}
-Given the nature of the data in this thesis, which is unlabeled, the focus shifts toward unsupervised learning techniques. Two of the most widely used and effective unsupervised clustering methods are \textbf{K-Means} and \textbf{DBSCAN}, both of which have been successfully applied in genomic studies \cite{macqueen1967classification, ester1996density}.
+\subsection{DBSCAN: Density-Based Clustering and Anomaly Detection}
+Density-Based Spatial Clustering of Applications with Noise (DBSCAN) is an unsupervised clustering algorithm that groups data points based on their density. It can identify clusters of arbitrary shapes and mark outliers as noise \cite{ester1996density}. DBSCAN is particularly effective for detecting anomalies in datasets with irregular structures.
 
-\subsubsection{K-Means Clustering}
-K-Means Clustering is one of the simplest and most widely used unsupervised learning algorithms. It groups data points into a predefined number of clusters (k) based on their similarity, typically measured by Euclidean distance. The algorithm iteratively assigns data points to the nearest cluster centroid, refining the cluster assignments until convergence.
+\paragraph{Methodology}
+DBSCAN works by defining clusters as dense regions of data points separated by sparse regions. The algorithm requires two parameters: the minimum number of points (minPts) and the maximum distance (epsilon) between points to be considered part of the same cluster. Points that do not belong to any cluster are marked as noise (anomalies).
 
-K-Means is a strong candidate for clustering DNA wells, especially when the number of clusters is known or can be reasonably estimated. The algorithm is computationally efficient and relatively simple to implement, which makes it an attractive choice for large genomic datasets. Its effectiveness is greatest when the data is relatively compact and spherical in shape, and when the clusters are well-separated from each other.
+\paragraph{Strengths}
+\begin{itemize}
+\item \textbf{Anomaly Detection}: DBSCAN explicitly identifies outliers as noise, making it suitable for anomaly detection tasks.
+\item \textbf{Handles Irregular Clusters}: Unlike K-Means, DBSCAN can detect clusters of arbitrary shapes, which is useful for complex genomic data.
+\item \textbf{No Need for Predefined Clusters}: DBSCAN does not require the number of clusters to be specified in advance, making it more flexible than K-Means.
+\item \textbf{Robustness to Noise}: DBSCAN is robust to noisy data, which is important for sequencing workflows.
+\end{itemize}
 
-However, K-Means has limitations. It requires the number of clusters (k) to be specified in advance, which can be challenging if the structure of the data is unknown. Additionally, K-Means is sensitive to outliers, which could pose problems when dealing with noisy genomic data.
+\paragraph{Limitations}
+\begin{itemize}
+\item \textbf{Parameter Sensitivity}: The performance of DBSCAN depends on the choice of parameters (epsilon and minPts), which may require tuning.
+\item \textbf{Scalability}: While DBSCAN is efficient for moderate-sized datasets, it can struggle with extremely large datasets due to its computational complexity.
+\item \textbf{Handling Mixed Data Types}: DBSCAN is traditionally designed for numerical data and may require adaptations to handle categorical or sequence data.
+\end{itemize}
 
-\subsubsection{DBSCAN (Density-Based Spatial Clustering of Applications with Noise)}
-DBSCAN is another unsupervised clustering algorithm that is particularly effective for data with irregular cluster shapes and noise. Unlike K-Means, DBSCAN does not require the number of clusters to be predefined. Instead, it clusters data based on the density of points, identifying dense regions of the data as clusters and marking sparse regions as noise.
+\paragraph{Relevance to Thesis}
+DBSCAN is highly relevant to the unsupervised nature of the task in this thesis. Its ability to detect anomalies and handle irregular cluster shapes aligns well with the goal of automating the quarantining of DNA wells. However, its parameter sensitivity and scalability limitations may require careful consideration.
 
-The main advantage of DBSCAN is its ability to detect clusters of arbitrary shape, which is a significant benefit when the structure of the data is complex or irregular. Additionally, DBSCAN can effectively handle outliers by classifying them as noise.
 
 \subsection{Comparison with Thesis Approach}
-    \begin{table}[h]
-        \centering
-        \caption{Comparison of Related Works with Thesis Approach}
-        \label{tab:comparison}
-        \begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
-        \hline
-        \textbf{Aspect} & \textbf{DeepConsensus} & \textbf{ClusterGAN} & \textbf{Thesis Approach} \\ \hline
-        Algorithm & CNN-based Error Correction & GAN-based Clustering & Similarity-Based Quarantining \\ \hline
-        Data Type & Raw Sequencing Reads & Encoded Genomic Sequences & Numerical Data (e.g., concentrations, IDs) \\ \hline
-        Supervision & Fully Supervised & Semi-Supervised & Unsupervised \\ \hline
-        Output & Corrected DNA Sequences & Clusters of Genomic Sequences & Cluster and Quarantine Visualization \\ \hline
-        Scalability & Moderate & High & High \\ \hline
-        Computational Cost & High & High & Moderate \\ \hline
-        \end{tabular}
-        \end{table}
+\begin{table}[h]
+    \centering
+    \caption{Comparison of Isolation Forest, DBSCAN, and Thesis Approach}
+    \label{tab:comparison}
+    \begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+    \hline
+    \textbf{Aspect} & \textbf{Isolation Forest} & \textbf{DBSCAN} & \textbf{Thesis Approach} \\ \hline
+    Algorithm & Unsupervised Anomaly Detection & Density-Based Clustering & Anomaly Detection \& Similarity-Based Quarantining \\ \hline
+    Data Type & Mixed (Numerical \& Categorical) & Numerical (with adaptations for mixed data) & Mixed (Numerical \& Sequence Data) \\ \hline
+    Supervision & Unsupervised & Unsupervised & Unsupervised \\ \hline
+    Output & Anomaly Scores & Cluster Assignments \& Noise (Anomalies) & Cluster and Quarantine Visualization \\ \hline
+    Scalability & High & Moderate & High \\ \hline
+    Computational Cost & Moderate & Moderate & Moderate \\ \hline
+    \end{tabular}
+\end{table}
 
 
+\subsection{Other Relevant Algorithms}
+In addition to Isolation Forest and DBSCAN, several other algorithms and techniques have been developed for genomic data analysis. These methods represent a mix of supervised, unsupervised, and transformer-based approaches, providing a broader context for the field.
+
+\paragraph{DNABERT: Transformer-Based Genomic Sequence Analysis}
+DNABERT is a transformer-based model designed for genomic sequence analysis. It leverages the self-attention mechanism of transformers to capture long-range dependencies in DNA sequences, enabling tasks such as sequence classification, motif discovery, and variant calling \cite{ji2021dnabert}. DNABERT is pre-trained on large-scale genomic datasets and fine-tuned for specific tasks, achieving state-of-the-art performance in several benchmarks.
+
+\paragraph{Nucleotide Transformer: Pre-trained Models for Genomics}
+The Nucleotide Transformer is another transformer-based model that has been pre-trained on diverse genomic datasets. It is designed to handle a wide range of genomic tasks, including sequence alignment, variant calling, and gene expression prediction \cite{dalla2023nucleotide}. Like DNABERT, the Nucleotide Transformer demonstrates the potential of pre-trained models for genomics, particularly in supervised learning tasks.
+
+\paragraph{Autoencoders for Anomaly Detection}
+Autoencoders are a type of neural network used for unsupervised learning, particularly for dimensionality reduction and anomaly detection. They work by compressing the input data into a lower-dimensional representation (encoding) and then reconstructing the original data from this representation (decoding). Wells with high reconstruction errors can be flagged as anomalies \cite{kingma2013autoencoding}.
+
+\paragraph{Graph Neural Networks (GNNs) for Relationship Modeling}
+Graph Neural Networks (GNNs) can model relationships between entities in a graph, making them suitable for tasks like gene clustering or pathway analysis. In your case, GNNs could be used to model relationships between wells based on shared features like primer usage, DNA ID, or client information \cite{kipf2016semi}.
 \subsection{Conclusion}
-The review of related work reveals that methods like DeepConsensus and ClusterGAN, while valuable in specific contexts, are not directly applicable to the unsupervised nature of the task in this thesis. DeepConsensus relies on labeled data for error correction, and ClusterGAN requires semi-supervised learning, making both approaches unsuitable for the task of clustering unlabeled DNA wells.
+The review of related work highlights the strengths and limitations of two state-of-the-art AI algorithms in genomics: Isolation Forest and DBSCAN. Isolation Forest is specifically designed for anomaly detection and excels at identifying outliers in mixed data types, making it highly suitable for the task of quarantining anomalous DNA wells. DBSCAN, on the other hand, offers robust clustering and anomaly detection capabilities, particularly for datasets with irregular structures, but may require adaptations to handle mixed data types.
 
-The most appropriate unsupervised learning methods for this work are K-Means and DBSCAN. K-Means is particularly well-suited for situations where the number of clusters is known or can be estimated, and the data is relatively clean and spherical in shape. DBSCAN, on the other hand, offers greater flexibility, particularly for handling irregular cluster
+The proposed approach in this thesis builds on the strengths of these algorithms while addressing their limitations through careful feature engineering and parameter tuning. By leveraging anomaly detection and explainability, the proposed solution aims to improve the efficiency and accuracy of DNA well quarantining in high-throughput sequencing workflows. The model quarantines wells it deems contaminated or anomalous, which are then reviewed by laboratory personnel for further action (e.g., re-trying or approving). This workflow ensures that only high-quality sequencing results are delivered to clients, enhancing the reliability and reputation of the sequencing service.
