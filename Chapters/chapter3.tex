@@ -67,11 +67,14 @@ The ABI3730xl DNA sequencer is a high-throughput instrument widely used in genom
 \end{figure}
 
 \section{Data Structure and Analysis}
-\label{sec:data_analysis }
+\label{sec:data_analysis}
 
-The efficiency of any artificial intelligence model is heavily dependent on the quality and structure of the data used for training. In this work, the data originates from customer samples sequenced using the ABI3730xl sequencer. The sequencer outputs a variety of files per plate well, including raw fluorescence data, the processed sequence itself, and additional quality metrics.
-Each PCR plate generates a significant volume of data, with millions of files produced over time, as multiple plates are processed each day. Since each PCR plate contains 96 wells, and each well generates 7 files, this results in 672 files per plate. 
-In this work, the files taken into account are the following:
+This section explores the structure and organization of the data generated during the DNA sequencing process, which serves as the foundation for the proposed AI-driven tool.
+
+\subsection{Data Collection}
+
+The effectiveness of any artificial intelligence model relies heavily on the quality and structure of the data used for training. In this work, the data originates from customer samples sequenced using the ABI3730xl DNA sequencer. Each well in a 96-well PCR plate generates multiple files, including raw fluorescence data, processed DNA sequences, and quality metrics. With each plate containing 96 wells and each well producing 6 distinct files, a single plate yields 576 files. Over time, as multiple plates are processed daily, this results in millions of files, forming a robust dataset for analysis.
+The primary file types considered in this work include:
 
 \begin{itemize}
   \item \textbf{Ab1 File}: Contains intensity readings for each of the four fluorescent dyes (A, T, C, G) used in Sanger sequencing, resulting in fluorescent traces. This file is optimized for long sequences (more than 500 bases).
@@ -100,7 +103,11 @@ Thus, 6 files are generated for this specific well:
   \item \texttt{2338715\_A1\_AA8117+Clon\_2+ORB501.qualtrace}
 \end{itemize}
 
-The database thus contains Dailybooks for each day, with reactions processed during that specific day
+Other relevant and important information about each plate well, such as the associated \textbf{Client's Name}, and \textbf{Primer DNA Sequence} (If applied by the laboratory staff) is also available.  
+
+\subsection{Database Structure}
+For model purposes, the database is structured with only relevant information, and a combination of data that derives from majority of the introduced files coupled with the additional information available.
 
 % section document_structure (end)
+
 
