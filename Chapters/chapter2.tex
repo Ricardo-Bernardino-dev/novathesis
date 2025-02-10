@@ -231,7 +231,7 @@ In the context of machine learning and deep learning, choosing the right model d
 \section{Related Work}
 The integration of Artificial Intelligence (AI) in genomics has revolutionized the field, enabling breakthroughs in DNA sequencing, variant calling, and anomaly detection. For this thesis, which aims to automate the detection and quarantining of anomalous DNA wells in a 96-well plate format, AI offers powerful tools to address the challenges of manual verification and error-prone workflows. Specifically, unsupervised and semi-supervised learning techniques are highly relevant, as they can identify patterns and anomalies in unlabeled sequencing data.
 
-This section explores two state-of-the-art AI algorithms that are best suited for the task: Isolation Forest and DBSCAN. Both algorithms are unsupervised and excel at identifying anomalies in complex datasets. A comparative analysis is presented to evaluate their suitability for automating the quarantining process of DNA wells.
+This section explores two state-of-the-art AI algorithms that appear to be best suited for the task. A comparative analysis is presented to evaluate their suitability for automating the quarantining process of DNA wells.
 
 \subsection{Isolation Forest: Unsupervised Anomaly Detection}
 Isolation Forest is an unsupervised anomaly detection algorithm that isolates anomalies instead of profiling normal data points. It works by randomly selecting a feature and then randomly selecting a split value between the maximum and minimum values of the selected feature. Anomalies are identified as data points that require fewer splits to be isolated \cite{liu2008isolation}.
@@ -292,7 +292,7 @@ DBSCAN is highly relevant to the unsupervised nature of the task in this thesis.
     \textbf{Aspect} & \textbf{Isolation Forest} & \textbf{DBSCAN} & \textbf{Thesis Approach} \\ \hline
     Algorithm & Unsupervised Anomaly Detection & Density-Based Clustering & Anomaly Detection \& Similarity-Based Quarantining \\ \hline
     Data Type & Mixed (Numerical \& Categorical) & Numerical (with adaptations for mixed data) & Mixed (Numerical \& Sequence Data) \\ \hline
-    Supervision & Unsupervised & Unsupervised & Unsupervised \\ \hline
+    Supervision & Unsupervised & Unsupervised & Unsupervised \& Semi-Supervised \\ \hline
     Output & Anomaly Scores & Cluster Assignments \& Noise (Anomalies) & Cluster and Quarantine Visualization \\ \hline
     Scalability & High & Moderate & High \\ \hline
     Computational Cost & Moderate & Moderate & Moderate \\ \hline
@@ -315,6 +315,4 @@ Autoencoders are a type of neural network used for unsupervised learning, partic
 \paragraph{Graph Neural Networks (GNNs) for Relationship Modeling}
 Graph Neural Networks (GNNs) can model relationships between entities in a graph, making them suitable for tasks like gene clustering or pathway analysis. In your case, GNNs could be used to model relationships between wells based on shared features like primer usage, DNA ID, or client information \cite{kipf2016semi}.
 \subsection{Conclusion}
-The review of related work highlights the strengths and limitations of two state-of-the-art AI algorithms in genomics: Isolation Forest and DBSCAN. Isolation Forest is specifically designed for anomaly detection and excels at identifying outliers in mixed data types, making it highly suitable for the task of quarantining anomalous DNA wells. DBSCAN, on the other hand, offers robust clustering and anomaly detection capabilities, particularly for datasets with irregular structures, but may require adaptations to handle mixed data types.
-
-The proposed approach in this thesis builds on the strengths of these algorithms while addressing their limitations through careful feature engineering and parameter tuning. By leveraging anomaly detection and explainability, the proposed solution aims to improve the efficiency and accuracy of DNA well quarantining in high-throughput sequencing workflows. The model quarantines wells it deems contaminated or anomalous, which are then reviewed by laboratory personnel for further action (e.g., re-trying or approving). This workflow ensures that only high-quality sequencing results are delivered to clients, enhancing the reliability and reputation of the sequencing service.
+The review of related work highlights the strengths and limitations of already existing AI algorithms in genomics. By levereging this knowledge with the specific domain goals of this thesis, we can now pursue and detail a proposal.

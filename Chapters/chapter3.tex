@@ -19,7 +19,7 @@
 \label{cha:Proposal}
 
 
-This chapter details the choice and implementation of the proposed AI-driven tool, outlining all the important steps for it's development. From the laboratory processes, the data collection, to the AI model proposal itself that will be used to automate well-quarantining, the ultimate goal of this proposal is to develop a system that enhances the efficiency and accuracy of delivered sequencing results while reducing manual effort. By leveraging machine learning techniques, particularly unsupervised learning, the proposed tool will provide an automated approach to categorizing DNA samples based on their similarity according to multiple fields. This will address the current limitations of manual analysis, improving both speed and reliability in laboratory workflows.
+This chapter details the choice and implementation of the proposed AI-driven tool, outlining all the important steps for it's development. From the laboratory processes, the data collection, to the AI model proposal itself that will be used to automate well-quarantining, the ultimate goal of this proposal is to develop a system that enhances the efficiency and accuracy of delivered sequencing results while reducing manual effort. By leveraging machine learning techniques, the proposed tool will provide an automated approach to categorizing DNA samples based on their similarity according to multiple fields. This will address the current limitations of manual analysis, improving both speed and reliability in laboratory workflows.
 
 The chapter begins with an overview of the laboratory processes involved in sequencing, including the preparation of samples in a 96-well PCR plate, and it's sequencing using the ABI3730xl DNA sequencer. Next, it discusses the data collection and storage procedures, emphasizing the structured format of sequencing outputs and metadata handling. Finally, it introduces the proposed AI model for use, detailing the methodology for clustering the DNA sequences and automating quality assessment.
 
@@ -68,7 +68,7 @@ The ABI3730xl DNA sequencer is a high-throughput instrument widely used in genom
 
 \subsection{Data Generation \& Collection}
 
-The effectiveness of any artificial intelligence model relies heavily on the quality and structure of the data used for training. In this work, the data originates from customer samples sequenced using the ABI3730xl DNA sequencer. Each well in a 96-well PCR plate generates multiple files, including raw fluorescence data, processed DNA sequences, and quality metrics. With each plate containing 96 wells and each well producing 6 distinct files, a single plate yields 576 files. Over time, as multiple plates are processed daily, this results in millions of files, forming a robust dataset for analysis.
+The effectiveness of any artificial intelligence model relies heavily on the quality and structure of the available data. In this work, the data originates from customer samples sequenced using the ABI3730xl DNA sequencer. Each well in a 96-well PCR plate generates multiple files, including raw fluorescence data, processed DNA sequences, and quality metrics. With each plate containing 96 wells and each well producing 6 distinct files, a single plate yields 576 files. Over time, as multiple plates are processed daily, this results in millions of files, forming a robust dataset for analysis.
 The primary file types considered in this work include:
 
 \begin{itemize}
@@ -99,7 +99,8 @@ Thus, 6 files are generated for this specific well:
 \end{itemize}
 
 Other relevant and important information about each plate well, such as the associated \textbf{Client's Name}, \textbf{Sequence Length}, \textbf{Primer DNA Sequence} (If applied by the laboratory staff), and the \textbf{Control Well Status} is also available.  
-
+\newline
+It's \textbf{important to notice} that even though anomaly cases aren't registered directly in the database as a field or flag, because they are manually verified and immediatly trated after detection, the laboratory team has made the effort to gather information on recent known anomalies that have occured, and this data can be seamlessly integrated as labeled data for this work.
 \subsection{Manual Analysis}
 
 After the data is generated, the laboratory staff manually handles quality checks on each plate individually, particularly for identifying possible fluorescence contamination and mismatches in sequencing results. This is a lenghty and thorough process that currently induces a bottleneck in the laboratory workflow. The main steps for quarantining wells are as follows:
@@ -114,14 +115,13 @@ After the data is generated, the laboratory staff manually handles quality check
     \end{itemize}
   \item \textbf{4. Forward and Reverse Sequence Matching}: DNA samples are analyzed based on forward and reverse sequencing. If a single base mismatch is detected in the same DNA sample (with matching \texttt{DNAID} and \texttt{primer\_id}), it is flagged for quarantine. In the case where a sample is processed with different primers, a variation in sequence is expected.
 \end{itemize}
-
 Sometimes certain samples do not appear to be contaminated, but the overall suspicion of such, or the poor quality presented, is enough to justify a quarantine, due to the importance of delivering accurate results.
 After the anomalies are quarantined, these possibly contaminated samples are re-sequenced for an attempt at acquiring higher quality and accuracy, while the remaining samples are delivered to the client.
 
-\section{Proposed Model \& Work}
+\section{Proposed Solution}
 \label{sec:model}
 
-The importance of automating this manual process leverging AI-based technology now comes into place. Removing the need for manual individual analysis of all samples per plate is as important as delivring accurate results that would reflect a seamlessly human intervation.
+The importance of automating this manual process leverging AI-based technology now comes into place. Removing the need for manual individual analysis of all samples per plate is as important as delivring accurate results that would reflect a seamlessly human intervention.
 The proposed work handles the early processes of processing the available data for model training, the model selection itself, and the validation and future deployability of the tool.
 
 \subsection{Database Structure}
@@ -156,13 +156,12 @@ This unified table structure ensures that all relevant information is stored in 
 
 For training, the data is consolidated into a unified table for efficient preprocessing and model development. For deployment, the AI-based tool is integrated directly with the company's servers to fetch and process data in real time.
 
-\section{Data Preprocessing}
-\label{sec:data_preprocessing}
+\subsection{Data Preprocessing}
 
 To ensure optimal input quality for the AI-based model, multiple preprocessing steps are performed on the raw sequencing data. This includes sequence trimming, feature extraction, normalization of numerical features, and handling categorical/text-based attributes appropriately.
 
-\subsection{Sequence Trimming}
-Raw sequencing data contains noise, in the form of poor base quality, particularly at the start and end of sequences. This happens due to the 
+\subsubsection{Sequence Trimming}
+Raw sequencing data contains noise, in the form of poor base quality, particularly at the start and end of sequences. At the beginning, this is primarily due to inefficient primer binding and weaker signal intensities as the primer binds and starts the reaction. At the end, the reduced availability of chain-terminating nucleotides (ddNTPs), declining polymerase efficiency, and signal saturation contribute to weaker and less accurate readings. \cite{sanger_method_original}
 
 \begin{figure}[h]
   \centering
@@ -187,159 +186,130 @@ To improve downstream analysis, sequences are trimmed using the following criter
 
 The trimmed sequences are then stored for subsequent steps.
 
-\subsection{Sequence Alignment Verification}
-For DNA sequences that share the same DNA ID, alignment verification is performed to ensure consistency. This step helps detect sequencing errors and contamination by checking:
-
+\subsubsection{Sequence Encoding}
+To represent DNA sequences in a numerical format suitable for clustering:
 \begin{itemize}
-    \item If forward and reverse sequences of the same DNA ID have mismatched bases, indicating sequencing inconsistencies.
-    \item If sequences from different clients but within the same cluster show high similarity, suggesting potential contamination.
+    \item \textbf{k-mer Frequency Encoding}:
+    \begin{itemize}
+        \item Each DNA sequence is converted into a vector of k-mer frequencies.
+        \item A k-mer size of 4 is chosen to balance specificity and computational efficiency.
+        \item For example, a 4-mer approach splits the sequence into overlapping subsequences of length 4 (tetramers) and counts their occurrences.
+        \item This method captures local sequence patterns and is particularly useful for clustering algorithms like DBSCAN.
+    \end{itemize}
 \end{itemize}
 
-Alignment is performed using a pairwise sequence alignment algorithm, such as **Needleman-Wunsch** or **Smith-Waterman**, to ensure accurate comparison. These algorithms account for gaps and mismatches, allowing reliable verification of sequence integrity.
-
-\subsection{Feature Extraction}
-After trimming, relevant metadata and sequence-related features are extracted:
-
+\subsubsection{Normalization}
+To ensure consistent scaling of features, while also ensuring numerical features contribute equally to the model:
 \begin{itemize}
-    \item DNA sequence (A, T, C, G).
-    \item DNA ID, Primer ID, Client Name, Plate ID, Plate Position, Plate Number, Date.
-    \item Qualtrace data (e.g., capillary length, sequence length, etc.).
-    \item Other well-related metadata.
+    \item \textbf{Sequence Feature Normalization}:
+    \begin{itemize}
+        \item The k-mer frequency vectors and the numerical features such as uality scores, sequence lengths, and other quantitative features, are normalized using \textbf{min-max scaling} or \textbf{z-score normalization}.
+        \item This ensures all features are on a similar scale, preventing any single feature from dominating the clustering process.
+    
+    \end{itemize}
 \end{itemize}
 
-\subsection{Normalization of Numerical Features}
-To ensure that numerical features contribute equally to the model, normalization is applied where appropriate:
-
+\subsubsection{Dimensionality Reduction}
+To handle the high dimensionality of k-mer frequency vectors:
 \begin{itemize}
-    \item Quality scores, sequence lengths, and other quantitative features are scaled to a \textit{0-1 range} using \textbf{min-max normalization} or even \textbf{z-score normalization}.
-    \item This prevents features with large values from dominating the model.
+    \item \textbf{Principal Component Analysis (PCA)}:
+    \begin{itemize}
+        \item PCA is applied to reduce the dimensionality of the feature space while retaining the most significant variance.
+        \item This step reduces computational complexity and mitigates the risk of overfitting.
+        \item The number of principal components is selected based on the cumulative explained variance (e.g., retaining 95\% of the variance).
+    \end{itemize}
 \end{itemize}
 
-Categorical variables such as DNA ID and Primer ID are left in their original format or encoded as needed.
-Even though \textbf{one-hot encoding} is commonly used in machine learning applications involving DNA sequences, in this context it is not necessary due to the unsupervised learning approach and the focus on sequence similarity rather than direct sequence classification \cite{bonat2023}. Instead, raw sequences are processed in their natural representation, ensuring efficiency and alignment with domain-specific methodologies.
 
-\subsection{Final Processed Data}
-The preprocessed data consists of:
+\subsection{Model Selection \& Development}
+
+The goal of the proposed AI-based tool is to fully automate the process currently performed manually by the laboratory staff. This involves categorizing DNA samples into wells based on their similarity and identifying anomalies that could indicate contamination, sequencing errors, or other irregularities. Since the proposed work is based on AI there is a clear need to choose appropriate models for specific tasks. 
+In this work's case, the nature of the problem combined with the manual tasks done by laboratory personel, imply that more than one model should be used to process data for different purposes. Hence a structured pipeline is the best choice for streamlining the data from one model to another.
+Thus, a hybrid approach is purposed with 2 Machine Learning Models.
+
+
+\subsubsection{Unsupervised Learning for Clustering}
+Given the lack of labeled data in the initial stages, unsupervised learning is particularly suitable for this task, as we first need to group samples that appear to be similar to each other together, indicating they are possibly from the same client. The following model appears to be the best choice:
 
 \begin{itemize}
-    \item Trimmed, high-quality DNA sequences.
-    \item Aligned sequences for consistency verification.
-    \item Normalized numerical metadata where applicable.
-    \item Categorical information preserved in its original form.
+    \item \textbf{Clustering with DBSCAN}:
+    \begin{itemize}
+        \item DBSCAN is chosen for its ability to identify clusters of varying shapes and sizes while automatically detecting outliers (anomalies).
+        \item Unlike centroid-based methods like K-means, DBSCAN does not require predefined cluster numbers, making it adaptable to diverse datasets.
+        \item It is robust to noise, which is critical for identifying mislabeled or contaminated wells.
+    \end{itemize}
 \end{itemize}
 
-This ensures that the AI model operates on well-structured and meaningful input data.
+The DBSCAN algorithm is implemented as follows:
 
-\section{Model Selection \& Development}
-\label{sec:model_development}
+\begin{itemize}
+    \item \textbf{Parameter Tuning}:
+    \begin{itemize}
+        \item The key parameters—\textit{eps} (maximum distance between samples in the same cluster) and \textit{min\_samples} (minimum number of samples in a cluster)—are optimized using grid search and silhouette score evaluation.
+    \end{itemize}
 
-The development of the AI-based tool involves selecting and training a model that can effectively automate the well-quarantining process. Given the lack of labeled anomalies, **unsupervised learning** techniques are the most appropriate choice. This section details the proposed models, their implementation, and the evaluation process.
+    \item \textbf{Anomaly Detection}:
+    \begin{itemize}
+        \item Samples not assigned to any cluster by DBSCAN are flagged as potential anomalies for further investigation.
+    \end{itemize}
+\end{itemize}
 
-\subsection{Model Selection}
-The following unsupervised learning models are considered for the task:
+\subsubsection{Semi-Supervised Learning for Anomaly Detection}
+To leverage the few anomaly cases registered by the laboratory team, which can be treated as labeled data labeled, a semi-supervised learning approach is proposed. The following method is selected:
 
-\subsubsection{DBSCAN (Density-Based Spatial Clustering of Applications with Noise)}
-- Purpose: To cluster sequences based on similarity and detect outliers (e.g., contamination).
-- Advantages:
-  - Does not require predefining the number of clusters.
-  - Can identify noise and outliers effectively.
-- Implementation:
-  - Use sequence similarity (e.g. , based on k-mer frequencies or alignment scores) as the distance metric.
-  - Tune the \textit{eps} (maximum distance between two samples to be considered neighbors) and \textit{min\_samples} (minimum number of samples in a neighborhood) parameters to optimize clustering performance.
-- Output: Clusters of similar sequences and flagged outliers.
+\begin{itemize}
+    \item \textbf{Self-Training with DBSCAN using Random Forest}:
+    \begin{itemize}
+        \item DBSCAN is used to generate initial cluster labels, which are then refined using a small set of labeled anomalies.
+        \item A classifier (e.g., Random Forest or Support Vector Machine) is trained on the labeled anomalies to improve detection accuracy.
+        \item This approach reduces the reliance on large labeled datasets while improving the model's ability to detect rare anomalies.
+    \end{itemize}
+\end{itemize}
 
-\subsubsection{Isolation Forest}
-- Purpose: To identify sequencing errors and outliers.
-- Advantages:
-  - Efficient for high-dimensional datasets.
-  - Focuses on isolating anomalies rather than profiling normal data points.
-- **Implementation**:
-  - Train the model on the feature matrix, using features such as sequence metrics, quality scores, and fluorescence traces.
-  - Use the model to score each sample, with higher scores indicating a higher likelihood of being an anomaly.
-- **Output**: Anomaly scores for each sample.
+The semi-supervised learning pipeline is developed as follows:
 
-\subsubsection{Hierarchical Clustering}
-- **Purpose**: To group sequences into a tree-like structure, allowing for flexible analysis at different levels of granularity.
-- **Advantages**:
-  - Provides a visual representation of clusters (dendrogram).
-  - Does not require predefining the number of clusters.
-- **Implementation**:
-  - Use a distance metric such as sequence similarity or Euclidean distance on feature vectors.
-  - Apply agglomerative clustering to build a hierarchy of clusters.
-- **Output**: A dendrogram showing the relationships between sequences.
+\begin{itemize}
+    \item \textbf{Label Generation}:
+    \begin{itemize}
+        \item Anomalies detected by DBSCAN are used as initial labels for training the classifier.
+    \end{itemize}
 
-\subsection{Model Training}
-- **Training Data**:
-  - Use a subset of historical data for training the model.
-  - Ensure the dataset includes diverse samples to improve generalization.
-- **Training Process**:
-  - Train each model on the preprocessed feature matrix.
-  - Use cross-validation to evaluate model performance and avoid overfitting.
-- **Hyperparameter Tuning**:
-  - Use grid search or random search to optimize hyperparameters (e.g. , \textit{eps} and \textit{min\_samples} for DBSCAN).
-  - Evaluate performance using metrics such as silhouette score (for clustering) and precision/recall (for anomaly detection).
+    \item \textbf{Classifier Training}:
+    \begin{itemize}
+        \item A Random Forest classifier is trained on the labeled anomalies due to its robustness and interpretability.
+        \item Feature importance analysis is performed to identify which k-mers contribute most to anomaly detection.
+    \end{itemize}
 
-\subsection{Model Evaluation}
-- **Clustering Accuracy**:
-  - Evaluate clustering performance using metrics such as **Adjusted Rand Index** (ARI) or **Silhouette Score**.
-  - Compare the model's clusters with manual annotations (if available) to assess accuracy.
-- **Anomaly Detection**:
-  - Evaluate anomaly detection performance using metrics such as **precision**, **recall**, and **F1-score**.
-  - Use historical contamination cases as a benchmark to validate the model's predictions.
-- **Error Rate in Base Pair Matching**:
-  - Measure the error rate in base pair matching by comparing the model's results with manual verification.
-  - Calculate the **false positive rate** and **false negative rate**.
+    \item \textbf{Prediction}:
+    \begin{itemize}
+        \item The trained classifier predicts anomalies in new sequencing data, providing automated quarantine recommendations.
+    \end{itemize}
+\end{itemize}
 
-\subsection{Iterative Improvement}
-- **Feedback Loop**:
-  - Collaborate with laboratory staff to validate the model's predictions and refine it based on their feedback.
-  - Incorporate additional features or adjust preprocessing steps as needed.
-- **Model Updates**:
-  - Periodically retrain the model using new data to ensure it remains accurate and up to date.
-  - Use version control (e.g., Git) to manage changes to the model and deployment pipeline.
+\subsection{Evaluation Metrics \& Model Refinement}
+To ensure the model's effectiveness and improve its performance, the following evaluation and refinement steps are employed. For clustering performance, the silhouette score measures cluster separation and cohesion, while the Davies-Bouldin index assesses cluster compactness and separation. For anomaly detection, precision, recall, F1-score, and the confusion matrix are used to evaluate anomaly identification accuracy and analyze false positives and false negatives.
+The model development process includes iterative refinement. DBSCAN parameters (e.g. , \texttt{eps} , \texttt{min\_samples} ) and classifier hyperparameters (e.g. , Random Forest) are fine-tuned using grid search or random search. Additionally, rule-based post-processing (e.g. , sequence length thresholds, mismatch tolerances) is applied to reduce false positives and improve accuracy.
 
-\section{Deployment Strategy}
-\label{sec:deployment}
+\subsection{Frameworks, Languages \& Tools}
+The development and implementation of the proposed AI-driven tool rely on the following technologies, selected for their suitability in data processing, machine learning, and deployment:
 
-For deployment, the AI tool must integrate seamlessly with the company's infrastructure to provide real-time analysis of sequencing data. The following steps outline the deployment strategy:
-
-\subsection{Real-Time Data Fetching}
-- **Method**:
-  - Use a file monitoring tool (e.g., `inotify` on Linux or `Watchdog` in Python) to detect new sequencing files in the company’s
+\begin{table}[h]
+\centering
+\caption{Frameworks, Languages \& Tools}
+\label{tab:frameworks}
+\begin{tabular}{|p{3.5cm}|p{3.5cm}|p{6cm}|}
+\hline
+\textbf{Category} & \textbf{Tools/Frameworks} & \textbf{Choice Justification} \\ \hline
+Programming Language & Python & Widely used for scientific computing and machine learning, with extensive libraries. \\ \hline
+Data Processing & NumPy, Pandas, Biopython & Efficient for numerical operations, data manipulation, and bioinformatics tasks. \\ \hline
+Machine Learning & Scikit-learn, Imbalanced-learn & Comprehensive libraries for clustering, classification, and handling imbalanced data. \\ \hline
+Visualization & Matplotlib, Seaborn & Provide intuitive and customizable plotting capabilities for data analysis. \\ \hline
+Database Management & SQLite, PostgreSQL & Lightweight and scalable solutions for storing and querying structured data. \\ \hline
+Version Control & Git, GitHub & Essential for collaborative development and version tracking. \\ \hline
+Deployment & Flask/FastAPI, Docker & Enable lightweight, scalable, and containerized deployment of the application. \\ \hline
+Bioinformatics & Needleman-Wunsch, Smith-Waterman (via Biopython) & Standard algorithms for sequence alignment, implemented efficiently in Biopython. \\ \hline
+Computational Resources & HPC, Dedicated Server & Provide the necessary computational power for large-scale data processing and model training. \\ \hline
+\end{tabular}
+\end{table}
 
 
-  \subsection{Model Selection}
-  The core requirement of the system is to automate the comparison of DNA sequences while integrating relevant metadata such as client identifiers, primers used, and sequencing run details. To achieve this, multiple unsupervised learning approaches are considered, each addressing different aspects of the verification process.
-  
-  \subsubsection{DBSCAN (Density-Based Spatial Clustering of Applications with Noise)}
-  DBSCAN is selected as a candidate model for sequence clustering and anomaly detection due to its ability to identify patterns in data without requiring a predefined number of clusters. This characteristic makes it well suited for grouping DNA sequences with varying degrees of similarity while simultaneously detecting potential sequencing errors or contamination.
-  
-  The distance metric for DBSCAN will be derived from sequence alignment scores or k-mer frequency representations, ensuring biologically meaningful clustering. Hyperparameters such as \textit{eps} (maximum neighborhood distance) and \textit{min\_samples} (minimum points per cluster) will be optimized to enhance performance. The expected outcome of this model is the formation of distinct sequence clusters, with outliers flagged for further review.
-  
-  \subsubsection{Isolation Forest}
-  Isolation Forest is considered for its effectiveness in detecting anomalies within high-dimensional datasets. By recursively partitioning the feature space and measuring how easily a sample is isolated, the model can identify sequencing errors or inconsistencies that deviate from expected patterns.
-  
-  Feature extraction will incorporate sequence-based attributes such as GC content, read quality scores, and fluorescence intensity deviations. The model will be trained on historical sequencing data, with an anomaly score assigned to each sample. Sequences with high anomaly scores will be flagged as potential errors requiring further validation.
-  
-  \subsubsection{Hierarchical Clustering}
-  Hierarchical clustering provides an alternative approach to sequence grouping, offering a hierarchical representation of sequence relationships. This method is particularly advantageous in cases where sequences exhibit varying levels of similarity, allowing for flexible thresholding when defining cluster membership.
-  
-  Pairwise similarity metrics will be computed using sequence alignment or feature vector distances, followed by agglomerative clustering. The resulting dendrogram will serve as an interpretable visualization of sequence relationships, aiding in the refinement of clustering thresholds.
-  
-  \subsection{Model Training}
-  The training phase will leverage historical DNA sequencing data to construct and optimize the proposed models. The dataset will encompass a diverse range of sequences to ensure robustness across different sequencing conditions.
-  
-  Prior to training, feature engineering will be conducted to transform raw sequencing data into a structured format suitable for analysis. The training process will involve multiple iterations of model refinement, incorporating techniques such as cross-validation to assess generalization performance.
-  
-  Hyperparameter tuning will be performed using methods such as grid search or Bayesian optimization, with evaluation metrics tailored to each model type. For clustering models, performance will be assessed using the silhouette score and Adjusted Rand Index (ARI), while the effectiveness of anomaly detection models will be measured through precision-recall metrics.
-  
-  \subsection{Model Evaluation}
-  To ensure the reliability of the proposed system, a rigorous evaluation framework will be implemented. The performance of clustering models will be validated by comparing automated groupings against manually verified sequence clusters. Similarly, the accuracy of anomaly detection models will be benchmarked against known contamination cases, with precision, recall, and F1-score serving as key evaluation metrics.
-  
-  An additional layer of evaluation will involve assessing the model’s ability to detect errors in base pair matching, comparing automated results with manual verification outcomes. False positive and false negative rates will be quantified to determine the reliability of the system in identifying sequencing errors.
-  
-  \subsection{Iterative Improvement}
-  Given the complexity of DNA sequence verification, an iterative approach will be adopted to refine model performance. A feedback loop will be established in collaboration with laboratory staff, enabling continuous validation of model outputs and adjustments to preprocessing strategies as necessary.
-  
-  Periodic retraining will be conducted using newly acquired sequencing data to maintain model accuracy over time. Furthermore, a version control system will be implemented to track modifications to the model architecture and hyperparameter configurations, ensuring reproducibility and traceability.
-  
