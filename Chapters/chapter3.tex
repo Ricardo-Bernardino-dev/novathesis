@@ -47,7 +47,7 @@ The laboratory workflow begins with the reception of DNA samples from various cl
 
 Upon receipt, some samples require human intervention to prepare them for sequencing. For instance, samples with uneven DNA concentrations must be normalized to ensure consistent sequencing quality. Additionally, samples that do not include a primer must have the appropriate primer added by laboratory staff. These steps are critical to ensure the accuracy and reliability of the sequencing results. Each plate also contains 1 well reserved for solely for quality control, named \textit{Control}
 
-Once prepared, these plates are then loaded into the ABI3730xl DNA sequencer, which includes DNA denaturation, primer annealing, extension with fluorescently labeled dideoxynucleotides, and capillary electrophoresis. The ABI3730xl sequencer then generates raw data files containing fluorescence intensity readings, which are subsequently processed to produce DNA sequence alignments.
+Once prepared, these plates are then loaded into a thermocycler, which includes the steps of DNA denaturation, primer annealing, and extension with fluorescently labeled dideoxynucleotides. Afterwards the electrophoresis is performed on the ABI3730xl sequencer. The ABI3730xl sequencer then generates raw data files containing fluorescence intensity readings, which are subsequently basecalled to produce DNA sequences.
 
 
 \subsection{The ABI3730xl DNA Sequencer}
@@ -117,6 +117,8 @@ After the data is generated, the laboratory staff manually handles quality check
 \end{itemize}
 Sometimes certain samples do not appear to be contaminated, but the overall suspicion of such, or the poor quality presented, is enough to justify a quarantine, due to the importance of delivering accurate results.
 After the anomalies are quarantined, these possibly contaminated samples are re-sequenced for an attempt at acquiring higher quality and accuracy, while the remaining samples are delivered to the client.
+\newline
+\paragraph{Requested Labeled Anomalies}: Though few and recent, the laboratory has been maintaining a record of known anomalies upon request after the manual analysis, which can be treated as \textbf{labeled data} and be useful for further model development.
 
 \section{Proposed Solution}
 \label{sec:model}
@@ -147,6 +149,7 @@ For model purposes, the database is structured with only relevant information, c
     \texttt{Purification\_Details} & Text & Information about the purification process. \\ \hline
     \texttt{Primer\_Sequence} & Text & Sequence of the primer used (if manually added by staff). \\ \hline
     \texttt{Date\_Processed} & Date & Date the plate was processed. \\ \hline
+    \texttt{Anomaly\_Detected} & Integer & Although limited, some data is labeled with this flag. \\ \hline
   \end{tabular}
   \caption{Unified Table Structure for Sequencing Data and Metadata.}
   \label{tab:unified_table}
@@ -156,7 +159,7 @@ This unified table structure ensures that all relevant information is stored in 
 
 For training, the data is consolidated into a unified table for efficient preprocessing and model development. For deployment, the AI-based tool is integrated directly with the company's servers to fetch and process data in real time.
 
-\subsection{Data Preprocessing}
+\subsection{Data Preprocessing (Feature Engineering)}
 
 To ensure optimal input quality for the AI-based model, multiple preprocessing steps are performed on the raw sequencing data. This includes sequence trimming, feature extraction, normalization of numerical features, and handling categorical/text-based attributes appropriately.
 
@@ -225,22 +228,13 @@ To handle the high dimensionality of k-mer frequency vectors:
 
 The goal of the proposed AI-based tool is to fully automate the process currently performed manually by the laboratory staff. This involves categorizing DNA samples into wells based on their similarity and identifying anomalies that could indicate contamination, sequencing errors, or other irregularities. Since the proposed work is based on AI there is a clear need to choose appropriate models for specific tasks. 
 In this work's case, the nature of the problem combined with the manual tasks done by laboratory personel, imply that more than one model should be used to process data for different purposes. Hence a structured pipeline is the best choice for streamlining the data from one model to another.
-Thus, a hybrid approach is purposed with 2 Machine Learning Models.
+Thus, a hybrid approach is proposed with 2 Machine Learning Models.
 
 
-\subsubsection{Unsupervised Learning for Clustering}
-Given the lack of labeled data in the initial stages, unsupervised learning is particularly suitable for this task, as we first need to group samples that appear to be similar to each other together, indicating they are possibly from the same client. The following model appears to be the best choice:
-
-\begin{itemize}
-    \item \textbf{Clustering with DBSCAN}:
-    \begin{itemize}
-        \item DBSCAN is chosen for its ability to identify clusters of varying shapes and sizes while automatically detecting outliers (anomalies).
-        \item Unlike centroid-based methods like K-means, DBSCAN does not require predefined cluster numbers, making it adaptable to diverse datasets.
-        \item It is robust to noise, which is critical for identifying mislabeled or contaminated wells.
-    \end{itemize}
-\end{itemize}
-
-The DBSCAN algorithm is implemented as follows:
+\subsubsection{Unsupervised Learning for Clustering - DBSCAN}
+Given the lack of cluster information data in the initial stages, unsupervised learning is particularly suitable for this task, as we first need to group samples that appear to be similar to each other together, indicating they are possibly from the same client. 
+Unlike centroid-based methods like K-means, DBSCAN does not require predefined cluster numbers, making it adaptable to diverse datasets.
+DBSCAN is used to group sequences into clusters based on their k-mer frequency representations. This unsupervised approach identifies natural groupings in the data, allowing for the detection of anomalies within clusters.
 
 \begin{itemize}
     \item \textbf{Parameter Tuning}:
@@ -248,47 +242,45 @@ The DBSCAN algorithm is implemented as follows:
         \item The key parameters—\textit{eps} (maximum distance between samples in the same cluster) and \textit{min\_samples} (minimum number of samples in a cluster)—are optimized using grid search and silhouette score evaluation.
     \end{itemize}
 
-    \item \textbf{Anomaly Detection}:
+    \item \textbf{Cluster Formation}:
     \begin{itemize}
-        \item Samples not assigned to any cluster by DBSCAN are flagged as potential anomalies for further investigation.
-    \end{itemize}
-\end{itemize}
-
-\subsubsection{Semi-Supervised Learning for Anomaly Detection}
-To leverage the few anomaly cases registered by the laboratory team, which can be treated as labeled data labeled, a semi-supervised learning approach is proposed. The following method is selected:
-
-\begin{itemize}
-    \item \textbf{Self-Training with DBSCAN using Random Forest}:
-    \begin{itemize}
-        \item DBSCAN is used to generate initial cluster labels, which are then refined using a small set of labeled anomalies.
-        \item A classifier (e.g., Random Forest or Support Vector Machine) is trained on the labeled anomalies to improve detection accuracy.
-        \item This approach reduces the reliance on large labeled datasets while improving the model's ability to detect rare anomalies.
-    \end{itemize}
-\end{itemize}
-
-The semi-supervised learning pipeline is developed as follows:
-
-\begin{itemize}
-    \item \textbf{Label Generation}:
-    \begin{itemize}
-        \item Anomalies detected by DBSCAN are used as initial labels for training the classifier.
-    \end{itemize}
-
-    \item \textbf{Classifier Training}:
-    \begin{itemize}
-        \item A Random Forest classifier is trained on the labeled anomalies due to its robustness and interpretability.
-        \item Feature importance analysis is performed to identify which k-mers contribute most to anomaly detection.
+        \item Sequences are grouped into clusters based on their similarity in k-mer frequency space.
+        \item \textbf{Samples not assigned to any cluster} are ignored, as the focus is on detecting anomalies within clusters.
     \end{itemize}
 
     \item \textbf{Prediction}:
     \begin{itemize}
-        \item The trained classifier predicts anomalies in new sequencing data, providing automated quarantine recommendations.
+        \item The cluster labels (0, 1, etc.) act as pseudo-labels for grouping similar samples.
+        \item Outliers (-1) are either ignored or treated as a separate class, depending on your workflow.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Semi-Supervised Learning for Anomaly Detection - Random Forest}
+To leverage the limited labeled anomalies provided by the laboratory team, a semi-supervised learning approach is proposed. This combines the unsupervised clustering results from DBSCAN with a supervised classifier to identify samples that do not belong in their assigned clusters.
+
+\begin{itemize}
+    \item \textbf{Using DBSCAN's output with the labeled data available}:
+    \begin{itemize}
+        \item Manually labeled anomalies (from laboratory annotations) are combined with DBSCAN’s pseudo-labels to create a semi-supervised dataset for training.
+    \end{itemize}
+
+    \item \textbf{Classification with Random Forest}:
+    \begin{itemize}
+        \item A Random Forest classifier is trained on the labeled dataset due to its robustness and interpretability.
+        \item Feature importance analysis is performed to identify which k-mers contribute most to detecting anomalies within clusters.
+    \end{itemize}
+
+    \item \textbf{Prediction}:
+    \begin{itemize}
+        \item The trained classifier predicts whether a sample belongs to its assigned cluster, flagging it as an anomaly if it does not.
+        \item This provides automated quarantine recommendations for samples that are likely to be misassigned within clusters.
     \end{itemize}
 \end{itemize}
 
 \subsection{Evaluation Metrics \& Model Refinement}
-To ensure the model's effectiveness and improve its performance, the following evaluation and refinement steps are employed. For clustering performance, the silhouette score measures cluster separation and cohesion, while the Davies-Bouldin index assesses cluster compactness and separation. For anomaly detection, precision, recall, F1-score, and the confusion matrix are used to evaluate anomaly identification accuracy and analyze false positives and false negatives.
-The model development process includes iterative refinement. DBSCAN parameters (e.g. , \texttt{eps} , \texttt{min\_samples} ) and classifier hyperparameters (e.g. , Random Forest) are fine-tuned using grid search or random search. Additionally, rule-based post-processing (e.g. , sequence length thresholds, mismatch tolerances) is applied to reduce false positives and improve accuracy.
+The model is evaluated using clustering and anomaly detection metrics to ensure effectiveness. For clustering, the silhouette score (cluster separation/cohesion) and Davies-Bouldin index (cluster compactness/separation) are used. Anomaly detection is assessed via precision, recall, F1-score, and a confusion matrix to analyze false positives/negatives. 
+
+Iterative refinement includes tuning DBSCAN (\texttt{eps}, \texttt{min\_samples}) and Random Forest hyperparameters using grid/random search. Rule-based post-processing (e.g., sequence length thresholds, mismatch tolerances) could also further improve accuracy by reducing false positives.
 
 \subsection{Frameworks, Languages \& Tools}
 The development and implementation of the proposed AI-driven tool rely on the following technologies, selected for their suitability in data processing, machine learning, and deployment:

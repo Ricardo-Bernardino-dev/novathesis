@@ -111,7 +111,7 @@ The overall structure of AI can be thought of as a hierarchy, where AI is the ov
 \paragraph{Machine Learning:} Machine Learning (ML) is a subset of AI focused on developing algorithms that enable systems to learn from data and make decisions without explicit programming. In ML, algorithms are trained to recognize patterns and infer insights from large datasets \cite{bishop2006pattern}.
 ML techniques are typically divided into three main categories based on the nature of the training data:
 \begin{itemize} 
-    \item \textbf{Supervised Learning}: The algorithm is trained on labeled data, where the input data is paired with the correct output. The goal is to learn a mapping from inputs to outputs, as seen in classification or regression tasks \cite{murphy2012machine}. 
+    \item \textbf{Supervised Learning}: The algorithm is trained on labeled data, where the input data is paired with the correct output. The goal is to learn a mapping from inputs to outputs, as seen in classification or regression tasks \cite{murphy2012machine}. \textbf{Semi-supervised Learning} uses both labeled and unlabeled data samples 
     \item \textbf{Unsupervised Learning}: This method involves training on data that has no labels. The algorithm tries to identify hidden patterns or structures, such as grouping similar data points into clusters \cite{james2013introduction}. 
     \item \textbf{Reinforcement Learning}: The algorithm learns by interacting with its environment and receiving feedback through rewards or penalties. It is particularly useful in dynamic environments where decisions have long-term consequences \cite{sutton2018reinforcement}. 
 \end{itemize}
@@ -293,7 +293,7 @@ DBSCAN is highly relevant to the unsupervised nature of the task in this thesis.
     Algorithm & Unsupervised Anomaly Detection & Density-Based Clustering & Anomaly Detection \& Similarity-Based Quarantining \\ \hline
     Data Type & Mixed (Numerical \& Categorical) & Numerical (with adaptations for mixed data) & Mixed (Numerical \& Sequence Data) \\ \hline
     Supervision & Unsupervised & Unsupervised & Unsupervised \& Semi-Supervised \\ \hline
-    Output & Anomaly Scores & Cluster Assignments \& Noise (Anomalies) & Cluster and Quarantine Visualization \\ \hline
+    Output & Anomaly Scores & Cluster Assignments \& Noise (Anomalies) & Cluster and Anomaly Predictions \\ \hline
     Scalability & High & Moderate & High \\ \hline
     Computational Cost & Moderate & Moderate & Moderate \\ \hline
     \end{tabular}
@@ -302,9 +302,11 @@ DBSCAN is highly relevant to the unsupervised nature of the task in this thesis.
 
 \subsection{Other Relevant Algorithms}
 In addition to Isolation Forest and DBSCAN, several other algorithms and techniques have been developed for genomic data analysis. These methods represent a mix of supervised, unsupervised, and transformer-based approaches, providing a broader context for the field.
+\paragraph{Random Forest for Classification and Anomaly Detection}
+Random Forest is an ensemble learning method that constructs multiple decision trees and aggregates their predictions to improve accuracy and robustness. By leveraging multiple trees, Random Forest reduces overfitting and enhances interpretability, making it a reliable choice for structured genomic data analysis \cite{breiman2001random}.
 
 \paragraph{DNABERT: Transformer-Based Genomic Sequence Analysis}
-DNABERT is a transformer-based model designed for genomic sequence analysis. It leverages the self-attention mechanism of transformers to capture long-range dependencies in DNA sequences, enabling tasks such as sequence classification, motif discovery, and variant calling \cite{ji2021dnabert}. DNABERT is pre-trained on large-scale genomic datasets and fine-tuned for specific tasks, achieving state-of-the-art performance in several benchmarks.
+DNABERT is a transformer-based model designed for genomic sequence analysis. It leverages the self-attention mechanism of transformers to capture long-range dependencies in DNA sequences, enabling tasks such as sequence classification, motif discovery, and variant calling \cite{ji2021dnabert}. DNABERT is pre-trained on large-scale genomic datasets and fine-tuned for specific tasks, achieving state-of-the-art performance in several benchmarks. 
 
 \paragraph{Nucleotide Transformer: Pre-trained Models for Genomics}
 The Nucleotide Transformer is another transformer-based model that has been pre-trained on diverse genomic datasets. It is designed to handle a wide range of genomic tasks, including sequence alignment, variant calling, and gene expression prediction \cite{dalla2023nucleotide}. Like DNABERT, the Nucleotide Transformer demonstrates the potential of pre-trained models for genomics, particularly in supervised learning tasks.
