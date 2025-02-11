@@ -117,8 +117,8 @@ After the data is generated, the laboratory staff manually handles quality check
 \end{itemize}
 Sometimes certain samples do not appear to be contaminated, but the overall suspicion of such, or the poor quality presented, is enough to justify a quarantine, due to the importance of delivering accurate results.
 After the anomalies are quarantined, these possibly contaminated samples are re-sequenced for an attempt at acquiring higher quality and accuracy, while the remaining samples are delivered to the client.
-\newline
-\paragraph{Requested Labeled Anomalies}: Though few and recent, the laboratory has been maintaining a record of known anomalies upon request after the manual analysis, which can be treated as \textbf{labeled data} and be useful for further model development.
+
+\paragraph{Requested Labeled Anomalies:} Though few and recent, the laboratory has been maintaining a record of known anomalies upon request after the manual analysis, which can be treated as \textbf{labeled data} and be useful for further model development.
 
 \section{Proposed Solution}
 \label{sec:model}
@@ -127,7 +127,7 @@ The importance of automating this manual process leverging AI-based technology n
 The proposed work handles the early processes of processing the available data for model training, the model selection itself, and the validation and future deployability of the tool.
 
 \subsection{Database Structure}
-For model purposes, the database is structured with only relevant information, combining data derived from the majority of the introduced files with additional metadata. To simplify data management and improve query efficiency, a single table is proposed to store all relevant sequencing data and metadata. Below is the schema for this unified table:
+For model purposes, the database is structured with only information both suggested by the laboratory staff and with personal opinion on the matter, creating what is believed to be most relevant data for this work. The result is the combination of data derived from the majority of the introduced files with additional metadata. A \textbf{NoSQL} database approach could be implemented with 1 file per Plate (containing all the processed samples of that plate as rows, 96 in total adhering to the number of wells per plate), to efficiently index the multiplicity of files available in this work, but the process of making this data available for this work is still undergoing. Thus, for now, to simplify data management, a table is proposed to represent the columns (features of the model), of each sample entry within these plate files. The most relevant is hence stored, as sequencing data and metadata. Below is the schema for this proposed table:
 
 \begin{table}[H]
   \centering
@@ -151,13 +151,12 @@ For model purposes, the database is structured with only relevant information, c
     \texttt{Date\_Processed} & Date & Date the plate was processed. \\ \hline
     \texttt{Anomaly\_Detected} & Integer & Although limited, some data is labeled with this flag. \\ \hline
   \end{tabular}
-  \caption{Unified Table Structure for Sequencing Data and Metadata.}
+  \caption{Table Structure for Sequencing Data and Metadata.}
   \label{tab:unified_table}
 \end{table}
 
-This unified table structure ensures that all relevant information is stored in a single location, simplifying data retrieval and analysis. It includes fields for plate and well identification, sequencing data, quality metrics, and metadata, making it suitable for both clustering and contamination detection tasks.
+This table structure ensures that all relevant information of each well derived from different generated files, is stored in a single organized row, simplifying data retrieval and analysis. It includes fields for plate and well identification, sequencing data, quality metrics, and metadata, making it suitable for both clustering and contamination detection tasks.
 
-For training, the data is consolidated into a unified table for efficient preprocessing and model development. For deployment, the AI-based tool is integrated directly with the company's servers to fetch and process data in real time.
 
 \subsection{Data Preprocessing (Feature Engineering)}
 
@@ -184,7 +183,7 @@ To improve downstream analysis, sequences are trimmed using the following criter
 
 \begin{itemize}
     \item Bases are removed from the start and end of the sequence until \textbf{10 consecutive bases} have a \textbf{quality score} greater than 20.
-    \item This ensures that only high-quality sequence regions are used for further processing.
+    \item This threshold ensures high-quality regions are retained, as a quality score of 20 corresponds to a base-calling accuracy of 99\% \cite{quality_score_threshold}.
 \end{itemize}
 
 The trimmed sequences are then stored for subsequent steps.
@@ -195,7 +194,7 @@ To represent DNA sequences in a numerical format suitable for clustering:
     \item \textbf{k-mer Frequency Encoding}:
     \begin{itemize}
         \item Each DNA sequence is converted into a vector of k-mer frequencies.
-        \item A k-mer size of 4 is chosen to balance specificity and computational efficiency.
+        \item A k-mer size of 4 is chosen to balance specificity and computational efficiency, as tetramers provide sufficient resolution for pattern recognition \cite{kmer_size_choice}.
         \item For example, a 4-mer approach splits the sequence into overlapping subsequences of length 4 (tetramers) and counts their occurrences.
         \item This method captures local sequence patterns and is particularly useful for clustering algorithms like DBSCAN.
     \end{itemize}
@@ -206,9 +205,8 @@ To ensure consistent scaling of features, while also ensuring numerical features
 \begin{itemize}
     \item \textbf{Sequence Feature Normalization}:
     \begin{itemize}
-        \item The k-mer frequency vectors and the numerical features such as uality scores, sequence lengths, and other quantitative features, are normalized using \textbf{min-max scaling} or \textbf{z-score normalization}.
+        \item The k-mer frequency vectors and the numerical features such as uality scores, sequence lengths, and other quantitative features, are normalized using \textbf{min-max scaling} or \textbf{z-score normalization} \cite{normalization_methods}.
         \item This ensures all features are on a similar scale, preventing any single feature from dominating the clustering process.
-    
     \end{itemize}
 \end{itemize}
 
@@ -219,17 +217,21 @@ To handle the high dimensionality of k-mer frequency vectors:
     \begin{itemize}
         \item PCA is applied to reduce the dimensionality of the feature space while retaining the most significant variance.
         \item This step reduces computational complexity and mitigates the risk of overfitting.
-        \item The number of principal components is selected based on the cumulative explained variance (e.g., retaining 95\% of the variance).
+        \item The number of principal components is selected based on the cumulative explained variance, retaining 95\% of the variance for example is a common threshold to balance complexity and information retention \cite{jolliffe2016}.
     \end{itemize}
 \end{itemize}
 
 
 \subsection{Model Selection \& Development}
 
-The goal of the proposed AI-based tool is to fully automate the process currently performed manually by the laboratory staff. This involves categorizing DNA samples into wells based on their similarity and identifying anomalies that could indicate contamination, sequencing errors, or other irregularities. Since the proposed work is based on AI there is a clear need to choose appropriate models for specific tasks. 
-In this work's case, the nature of the problem combined with the manual tasks done by laboratory personel, imply that more than one model should be used to process data for different purposes. Hence a structured pipeline is the best choice for streamlining the data from one model to another.
-Thus, a hybrid approach is proposed with 2 Machine Learning Models.
+The goal of the proposed AI-based tool is to fully automate the process currently performed manually by the laboratory staff. This involves categorizing DNA samples into wells based on their similarity and identifying anomalies that could indicate contamination, sequencing errors, or other irregularities. Since the proposed work is based on AI, there is a clear need to choose appropriate models for specific tasks. Given the complexity of the problem and the multiple steps involved in manual analysis---ranging from sequence clustering to anomaly detection---a \textbf{hybrid approach} is proposed to achieve both tasks. This approach leverages \textbf{two machine learning models}, one for clustering and another for anomaly detection inside these formed clusters:
 
+\begin{itemize}
+    \item \textbf{Unsupervised Clustering (DBSCAN)}: Groups DNA sequences based on similarity, mimicking the laboratory's manual clustering process without requiring labeled anomalies.
+    \item \textbf{Supervised Classification (Random Forest)}: Detects anomalies using labeled data and features derived from clustering, enhancing detection accuracy.
+\end{itemize}
+
+Thus, a \textbf{structured pipeline} seems to be a good choice and starting point for streamlining the data from one model to another, combining the strengths of unsupervised and supervised learning to address the dual challenges of sequence similarity and anomaly detection.
 
 \subsubsection{Unsupervised Learning for Clustering - DBSCAN}
 Given the lack of cluster information data in the initial stages, unsupervised learning is particularly suitable for this task, as we first need to group samples that appear to be similar to each other together, indicating they are possibly from the same client. 
