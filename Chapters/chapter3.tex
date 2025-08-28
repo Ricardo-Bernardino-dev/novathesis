@@ -19,9 +19,12 @@
 \label{cha:Proposal}
 
 
-This chapter details the choice and implementation of the proposed AI-driven tool, outlining all the important steps for it's development. From the laboratory processes, the data collection, to the AI model proposal itself that will be used to automate well-quarantining, the ultimate goal of this proposal is to develop a system that enhances the efficiency and accuracy of delivered sequencing results while reducing manual effort. By leveraging machine learning techniques, the proposed tool will provide an automated approach to categorizing DNA samples based on their similarity according to multiple fields. This will address the current limitations of manual analysis, improving both speed and reliability in laboratory workflows.
+This chapter presents the original proposal that guided the early stages of this thesis. It outlines the initial plan for developing an AI-driven tool to automate anomaly detection in Sanger sequencing workflows. The proposal included the overall vision, technical approach, and model selection strategy that informed the project’s first phase.
 
-The chapter begins with an overview of the laboratory processes involved in sequencing, including the preparation of samples in a 96-well PCR plate, and it's sequencing using the ABI3730xl DNA sequencer. Next, it discusses the data collection and storage procedures, emphasizing the structured format of sequencing outputs and metadata handling. Finally, it introduces the proposed AI model for use, detailing the methodology for clustering the DNA sequences and automating quality assessment.
+The goal of the proposed system was to improve the efficiency and accuracy of well verification in 96-well sequencing plates by reducing reliance on manual review. By leveraging machine learning techniques, the system was expected to automatically categorize DNA samples based on sequence similarity and associated metadata, enabling faster detection of contamination or sequencing errors.
+
+The chapter begins with an overview of the laboratory processes, including sample preparation, sequencing using the ABI3730xl DNA analyzer, and the structure of the resulting data. It then introduces the original architecture and data preprocessing pipeline proposed for this task, including early choices such as DBSCAN and Random Forest. This proposal served as the conceptual foundation for the subsequent development.
+
 
 \section{Laboratory Processes}
 \label{sec:laboratory}
@@ -29,7 +32,7 @@ The chapter begins with an overview of the laboratory processes involved in sequ
 The laboratory processes described here are central to the generation of the data used in this work. These processes involve the handling of DNA samples, their preparation for sequencing, and the subsequent analysis of the results.
 
 \subsection{Sample Preparation and Processing}
-The laboratory workflow begins with the reception of DNA samples from various clients. These samples are organized into 96-well PCR plates, where each well is identified by a unique coordinate system: letters A to H for the rows and numbers 1 to 12 for the columns (Figure \ref{fig:96_well_plate}). This organization ensures traceability and efficient handling of multiple samples simultaneously. Samples from the same client are grouped together in neighboring wells, although not all wells need to be occupied for sequencing to proceed. Each plate must contain at least one control well.
+The laboratory workflow begins with the reception of DNA samples from various clients. These samples are organized into 96-well PCR plates, where each well is identified by a unique coordinate system: letters A to H for the rows and numbers 1 to 12 for the columns (Figure \ref{fig:96_well_plate}). This organization ensures traceability and efficient handling of multiple samples simultaneously. Samples from the same client are grouped together in neighboring wells, although not all wells need to be occupied for sequencing to proceed.
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.8\textwidth]{96plate.png}
@@ -45,7 +48,7 @@ The laboratory workflow begins with the reception of DNA samples from various cl
   \label{fig:platecoords}
 \end{figure}
 
-Upon receipt, some samples require human intervention to prepare them for sequencing. For instance, samples with uneven DNA concentrations must be normalized to ensure consistent sequencing quality. Additionally, samples that do not include a primer must have the appropriate primer added by laboratory staff. These steps are critical to ensure the accuracy and reliability of the sequencing results. Each plate also contains 1 well reserved for solely for quality control, named \textit{Control}
+Upon receipt, some samples require human intervention to prepare them for sequencing. For instance, samples with uneven DNA concentrations must be normalized to ensure consistent sequencing quality. Additionally, samples that do not include a primer must have the appropriate primer added by laboratory staff. These steps are critical to ensure the accuracy and reliability of the sequencing results. Each plate also contains 1 well reserved solely for quality control, named \textit{Control}.
 
 Once prepared, these plates are then loaded into a thermocycler, which includes the steps of DNA denaturation, primer annealing, and extension with fluorescently labeled dideoxynucleotides. Afterwards the electrophoresis is performed on the ABI3730xl sequencer. The ABI3730xl sequencer then generates raw data files containing fluorescence intensity readings, which are subsequently basecalled to produce DNA sequences.
 
@@ -100,10 +103,11 @@ Thus, 6 files are generated for this specific well:
 
 Other relevant and important information about each plate well, such as the associated \textbf{Client's Name}, \textbf{Sequence Length}, \textbf{Primer DNA Sequence} (If applied by the laboratory staff), and the \textbf{Control Well Status} is also available.  
 \newline
-It's \textbf{important to notice} that even though anomaly cases aren't registered directly in the database as a field or flag, because they are manually verified and immediatly trated after detection, the laboratory team has made the effort to gather information on recent known anomalies that have occured, and this data can be seamlessly integrated as labeled data for this work.
+It is also important to note that while DNA sequences are primarily composed of the four canonical bases: adenine (A), thymine (T), cytosine (C), and guanine (G), some sequences contain additional IUPAC ambiguity codes such as \texttt{N} (any base) or \texttt{Y} (C or T). These ambiguous bases typically arise from basecalling uncertainty in low-quality signal regions. Their presence has implications for downstream processing, especially for sequence encoding in machine learning models, which would need to be addressed during downstream sequence encoding.
+\newline
 \subsection{Manual Analysis}
 
-After the data is generated, the laboratory staff manually handles quality checks on each plate individually, particularly for identifying possible fluorescence contamination and mismatches in sequencing results. This is a lenghty and thorough process that currently induces a bottleneck in the laboratory workflow. The main steps for quarantining wells are as follows:
+After the data is generated, the laboratory staff manually handles quality checks on each plate individually, particularly for identifying possible fluorescence contamination and mismatches in sequencing results. This is a lengthy and thorough process that currently induces a bottleneck in the laboratory workflow. The main steps for quarantining wells are as follows:
 
 \begin{itemize}
   \item \textbf{1. Control Well Check}: The laboratory staff begins by checking the \texttt{control\_well} for each plate. If the control well's \texttt{ok\_flag} is \texttt{NOT OK}, the entire plate is quarantined, as this indicates a problem with the sequencing process. If the control well passes the check, the process moves to the next step.
@@ -118,16 +122,25 @@ After the data is generated, the laboratory staff manually handles quality check
 Sometimes certain samples do not appear to be contaminated, but the overall suspicion of such, or the poor quality presented, is enough to justify a quarantine, due to the importance of delivering accurate results.
 After the anomalies are quarantined, these possibly contaminated samples are re-sequenced for an attempt at acquiring higher quality and accuracy, while the remaining samples are delivered to the client.
 
-\paragraph{Requested Labeled Anomalies:} Though few and recent, the laboratory has been maintaining a record of known anomalies upon request after the manual analysis, which can be treated as \textbf{labeled data} and be useful for further model development.
+\paragraph{Labeled Anomalies:} Although anomalies are not registered automatically in the laboratory's database, a small set of manually verified anomalies was made available upon request. Due to the rarity of confirmed contamination or sequencing errors in practice, the laboratory only identified \textbf{four plates} with known anomalies during the course of the data collection of this thesis. These labeled plates were used for evaluating the performance of the proposed models against the laboratory’s ground truth. This scarcity of labeled anomalies further justified the adoption of machine learning strategies throughout the project.
 
-\section{Proposed Solution}
-\label{sec:model}
+The complexity and subjectivity involved in these manual steps highlighted the need for a consistent and automated approach, which motivated the development of an AI-based system described in the next sections.
 
-The importance of automating this manual process leverging AI-based technology now comes into place. Removing the need for manual individual analysis of all samples per plate is as important as delivring accurate results that would reflect a seamlessly human intervention.
-The proposed work handles the early processes of processing the available data for model training, the model selection itself, and the validation and future deployability of the tool.
+\section{Initial Proposed Architecture}
+\label{sec:initial_architecture}
+
+The initial system design aimed to automate the manual verification of 96-well Sanger sequencing plates using artificial intelligence. The proposed approach focused on replicating the laboratory’s reasoning process using a combination of clustering techniques and anomaly detection models. The intention was to streamline the pipeline from data ingestion to anomaly flagging, leveraging both sequence similarity and metadata.
+
+This section presents the architecture that was initially envisioned, including the database schema, preprocessing pipeline, and the selection of machine learning models. This intial design served as a conceptual and experimental foundation.
 
 \subsection{Database Structure}
-For model purposes, the database is structured with only information both suggested by the laboratory staff and with personal opinion on the matter, creating what is believed to be most relevant data for this work. The result is the combination of data derived from the majority of the introduced files with additional metadata. A \textbf{NoSQL} database approach could be implemented with 1 file per Plate (containing all the processed samples of that plate as rows, 96 in total adhering to the number of wells per plate), to efficiently index the multiplicity of files available in this work, but the process of making this data available for this work is still undergoing. Thus, for now, to simplify data management, a table is proposed to represent the columns (features of the model), of each sample entry within these plate files. The most relevant is hence stored, as sequencing data and metadata. Below is the schema for this proposed table:
+From the beginning of the project, data was consistently structured and received as individual Excel files, one per 96-well plate. Each file contains up to 96 rows, each representing a single well, with columns aggregating all relevant metadata, DNA sequence information, and signal quality metrics. This format, maintained throughout the entire pipeline, provided a practical balance between laboratory needs and computational workflows. It also facilitated modular, per-plate analysis, aligned with how the laboratory manually reviews and processes sequencing results.
+
+Although a NoSQL-style architecture was briefly considered during the proposal phase, in which each plate would be treated as a document containing all associated files and metadata, this alternative was never implemented. The structured `.xlsx` format proved to be efficient, clean, and well-suited for both preprocessing and modeling tasks. Its tabular nature made it easy to ingest, process, and analyze the data, while preserving well-level granularity.
+
+\paragraph{Original Proposed Schema:}  
+At the proposal stage, the following schema was envisioned based on assumptions about data availability and early exploration of STAB VIDA’s sequencing workflow. The table included planned fields ranging from raw fluorescence traces to primer sequences and purification metadata.
+
 
 \begin{table}[H]
   \centering
@@ -156,7 +169,7 @@ For model purposes, the database is structured with only information both sugges
 \end{table}
 
 This table structure ensures that all relevant information of each well derived from different generated files, is stored in a single organized row, simplifying data retrieval and analysis. It includes fields for plate and well identification, sequencing data, quality metrics, and metadata, making it suitable for both clustering and contamination detection tasks.
-
+ 
 
 \subsection{Data Preprocessing (Feature Engineering)}
 
@@ -205,7 +218,7 @@ To ensure consistent scaling of features, while also ensuring numerical features
 \begin{itemize}
     \item \textbf{Sequence Feature Normalization}:
     \begin{itemize}
-        \item The k-mer frequency vectors and the numerical features such as uality scores, sequence lengths, and other quantitative features, are normalized using \textbf{min-max scaling} or \textbf{z-score normalization} \cite{normalization_methods}.
+        \item The k-mer frequency vectors and the numerical features such as quality scores, sequence lengths, and other quantitative features, are normalized using \textbf{min-max scaling} or \textbf{z-score normalization} \cite{normalization_methods}.
         \item This ensures all features are on a similar scale, preventing any single feature from dominating the clustering process.
     \end{itemize}
 \end{itemize}

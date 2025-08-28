@@ -3,29 +3,390 @@
 %% chapter4.tex
 %% NOVA thesis document file
 %%
-%% Chapter with lots of dummy text
+%% Chapter 4 — Implementation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \typeout{NT FILE chapter4.tex}%
 
-\chapter{Planning}
-\label{cha:Planning}
+\chapter{Implementation}
+\label{cha:Implementation}
 
-This chapter outlines the timeline and milestones for the development of the proposed AI-driven tool. The planning process is structured to ensure efficient progress across all stages, from initial data collection and preprocessing to model development, evaluation, and deployment. A detailed Gantt chart is provided to visualize the schedule.
-\section{Timeline \& Milestones}
-The timeline is designed to accommodate iterative refinement and unforeseen challenges, ensuring a robust and reliable outcome.
+This chapter details the implemented \textsc{Prometheus} pipeline. We document the concrete design, the pivots from the initial proposal, and the design choices that led to the final configuration. Quantitative validation and ablation results are reported in Chapter~\ref{cha:Evaluation}. The pipeline runs end-to-end on plate Excel files and produces interpretable anomaly flags suitable for routine laboratory use.
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{gantt2.png} 
-    \caption{Gantt Chart of the Project Timeline}
-    \label{fig:gantt}
-\end{figure}
+\section{Design Evolution (Concise)}
+\label{sec:impl_evolution}
+Three constraints drove the change from the proposal (DBSCAN + Random Forest) to the final pipeline:
+\begin{enumerate}
+  \item \textbf{Plate locality:} anomalies are defined \emph{within} each 96-well plate (relative comparisons to sibling wells).
+  \item \textbf{Order sensitivity:} base order matters (e.g., single-base mismatches), so we need a sequence model rather than bag-of-k-mers alone.
+  \item \textbf{Label scarcity:} very few confirmed anomalies; we must lean on unsupervised/weakly-supervised signals plus interpretable rules.
+\end{enumerate}
+Consequently, \textsc{Prometheus} adopts a \emph{per-plate} Conv1D autoencoder (AE) to learn plate-specific normal patterns and extract latent features, a supervised gradient-boosting classifier (LightGBM) trained with plate-wise cross-validation, and a post-hoc rule layer. Plate-local sequence similarity at $\geq 66\%$ identity (BLAST-like) supplies contamination-style features and rule checks.
 
-The Gantt chart (Figure \ref{fig:gantt}) illustrates the following phases:
+\section{System Overview and Orchestration}
+\label{sec:system_overview}
+
+A watcher process \texttt{deploy\_prometheus.py} runs continuously at the project root. It polls the \texttt{input/} folder every few seconds and processes plates \emph{sequentially} (one at a time) through Steps~1--4. \textbf{After each attempt—success or failure—the input Excel is moved to \texttt{input/processed/}.} To re-run a failed plate, the file must be re-added to \texttt{input/}. After a successful run, a background routine (Step~5) is launched asynchronously for optional historical validation.
+
+\begin{enumerate}
+  \item \textbf{Step~1 -- Preprocessing} (\texttt{preprocess\_plates\_wrapper.py}): Q20 trimming, ambiguity flags, position-aware 4-mer tokenization, and plate-local similarity ($\geq$66\%).
+  \item \textbf{Step~2 -- Autoencoder (per plate)} (\texttt{auto\_encoder\_wrapper.py}): train seq-to-seq Conv1D AE; export per-well latent vectors and reconstruction errors.
+  \item \textbf{Step~3 -- Features \& Classifier} (\texttt{build\_features\_wrapper.py}, \texttt{lgbm\_classifier\_wrapper.py}): merge features; score with LightGBM (plate-wise CV during development, calibrated threshold).
+  \item \textbf{Step~4 -- Post-hoc Rules \& Exports} (\texttt{generate\_results\_wrapper.py}): fuse model scores with rules; save interpretable CSVs.
+  \item \textbf{Step~5 -- (Async) Historical/Taxonomic Check} (\texttt{verify\_anomalies\_with\_history.py}): launched \emph{after} a successful run to enrich flagged wells with optional BLAST taxonomy and customer-history alignment; runs in the background.
+\end{enumerate}
+
+\noindent\textit{Artifact locations.} Steps~1 and~2 write staging artifacts under \texttt{Step\_1/output/} and \texttt{Step\_2/output/}. The orchestrator copies the plate layout HTML to \texttt{results/\{plate\}/\{plate\}\_layout.html}. Step~3 writes \texttt{results/\{plate\}/features\_lgbm.csv} and \texttt{results/\{plate\}/predictions\_lgbm.csv}; Step~4 writes \texttt{results/\{plate\}/predictions\_interpretable.csv} and \texttt{results/\{plate\}/predictions\_interpretable\_labview.csv}.
+
+
+
+\section{From Proposal to Implementation: Stepwise Evolution}
+\label{sec:stepwise_evolution}
+
+This section bridges Chapter~\ref{cha:Proposal} to the implemented pipeline by comparing, per step, what was proposed, what we observed, the change we made, and the evidence motivating it.
+
+\subsection*{Step 1 — Data Processing \& Similarity}
+\paragraph{Proposal (Ch.~\ref{cha:Proposal}).}
+Global clustering with DBSCAN on PCA-reduced $k$-mer frequencies; basic end-trim.
+
+\paragraph{Observed issues.}
+(i) Bag-of-$k$-mers lost order (single-base mismatches slipped through). 
+(ii) Global cluster IDs encouraged cross-plate leakage; clusters are inherently plate-local.
+(iii) Tail noise (\texttt{N}/\texttt{Y}) polluted features; short reads distorted representations.
+
+\paragraph{Implemented change.}
+(i) Plate-local BLAST-like pairwise identity ($\geq 66\%$) to form in-plate neighbourhoods (no cross-plate reuse). 
+(ii) Order-sensitive 4-mer windows (stride $=1$ for encoding; exported as 147-token windows with stride $=50$). 
+(iii) Central Q20$\times$10 trimming; ambiguous bases \emph{flagged} (not encoded); reads $<150$ bases bypass AE.
+
+\paragraph{Evidence.}
+Figure~\ref{fig:step1_neighbourhoods} shows a neighbourhood graph with reduced cross-client collisions. 
+Table~\ref{tab:step1_purity} reports higher in-plate neighbourhood purity vs.\ DBSCAN@$k$-mer.
+
+%\begin{figure}[H]
+  %\centering
+  % replace with your layout export
+ % \includegraphics[width=0.70\textwidth]{results/example_plate/plate_layout.png}
+ % \caption{Plate-local similarity graph (identity $\geq 66\%$) for an evaluation plate.}
+ % \label{fig:step1_neighbourhoods}
+%\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Neighbourhood purity (\% same client within neighbourhoods), proposal vs.\ implemented.}
+\label{tab:step1_purity}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Plate} & \textbf{DBSCAN@$k$-mer (proposal)} & \textbf{BLAST-like (implemented)} \\\hline
+January\_30\_2025\_p6  & \dots & \dots \\\hline
+January\_31\_2025\_p1  & \dots & \dots \\\hline
+March\_12\_2025\_p1\_siso & \dots & \dots \\\hline
+March\_13\_2025\_p4\_siso & \dots & \dots \\\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Takeaway.} Treat plates as isolated universes; keep order; do not encode ambiguity.
+
+\subsection*{Step 2 — Representation Learning (Autoencoder)}
+\paragraph{Proposal (Ch.~\ref{cha:Proposal}).}
+No sequence model; PCA on $k$-mers; Random Forest downstream.
+
+\paragraph{Observed issues.}
+Missing order sensitivity; global models underfit plate-specific distributions; padding short reads injected noise; mapping \texttt{N}/\texttt{Y} to neutral tokens corrupted latents.
+
+\paragraph{Implemented change.}
+Per-plate Conv1D autoencoder over 4-mer tokens; skip AE when $<$150 bases or ambiguity remains (\texttt{Short\_Read}/\texttt{Has\_Non\_ACTG\_Bases}); export 32-d latent + reconstruction error per well.
+
+\paragraph{Evidence.}
+Figure~\ref{fig:step2_loss} shows stable per-plate AE training (loss curves). 
+Table~\ref{tab:step2_latent_utility} shows recall lift when adding AE latents to the tabular model.
+
+%\begin{figure}[H]
+  %\centering
+  % replace with results/<plate>/<plate>_loss_curve.png
+ % \includegraphics[width=0.70\textwidth]{results/January_30_2025_p6/January_30_2025_p6_loss_curve.png}
+ % \caption{AE training loss curve (example plate).}
+ % \label{fig:step2_loss}
+%\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Impact of AE latents on anomaly recall (LightGBM; plate-wise CV).}
+\label{tab:step2_latent_utility}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Setting} & \textbf{Recall} & \textbf{Precision} \\\hline
+Tabular (no latents) & \dots & \dots \\\hline
+Tabular + AE latents  & \dots & \dots \\\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Takeaway.} Small per-plate encoders capture local regularities that global models miss.
+
+\subsection*{Step 3 — Classifier \& Leakage Control}
+\paragraph{Proposal (Ch.~\ref{cha:Proposal}).}
+Random Forest on cluster-derived features; per-well splits.
+
+\paragraph{Observed issues.}
+Per-well splits leak plate context; RF/MLP unstable under class imbalance; metadata shortcuts (\texttt{Client\_ID}/\texttt{Primer\_ID}) suppress sequence features.
+
+\paragraph{Implemented change.}
+LightGBM with GroupKFold by plate and calibrated threshold; remove \texttt{Client\_ID}/\texttt{Primer\_ID} from the model (kept for explanations/rules); positive class weighting; permutation-importance checks.
+
+\paragraph{Evidence.}
+Figure~\ref{fig:step3_importance} shows permutation importance with/without metadata shortcuts. 
+Table~\ref{tab:step3_models} compares RF, XGBoost, and LightGBM.
+
+%\begin{figure}[H]
+  %\centering
+  % replace with your export (e.g., figs/perm_importance_no_shortcuts.png)
+ % \includegraphics[width=0.70\textwidth]{figs/perm_importance_no_shortcuts.png}
+ % \caption{Permutation importance after removing \texttt{Client\_ID}/\texttt{Primer\_ID}: sequence latents matter.}
+ %% \label{fig:step3_importance}
+%\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Classifier comparison (plate-wise CV).}
+\label{tab:step3_models}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Model} & \textbf{AUROC} & \textbf{AUPRC} & \textbf{F1} \\\hline
+Random Forest & \dots & \dots & \dots \\\hline
+XGBoost       & \dots & \dots & \dots \\\hline
+LightGBM      & \dots & \dots & \dots \\\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Takeaway.} Grouped splits, calibrated boosting, and careful feature hygiene prevent illusory gains.
+
+\subsection*{Step 4 — Post-hoc Rules \& Reporting}
+\paragraph{Proposal (Ch.~\ref{cha:Proposal}).}
+Purely model-driven decisions.
+
+\paragraph{Observed issues.}
+Heterogeneous anomaly types (contamination vs.\ forward/reverse mismatch vs.\ short/ambiguous reads) benefit from explicit logic; the lab needs traceable reasons and a compact export.
+
+\paragraph{Implemented change.}
+Weighted rules (cross-client homology, cross-primer consistency, ambiguity/short-read handling, forward/reverse reverse-complement check when available), fused with model probability; two exports: an interpretable CSV and a LabVIEW-ready compact CSV.
+
+\paragraph{Evidence.}
+Figure~\ref{fig:step4_curve} shows precision–recall shift after rule fusion; Table~\ref{tab:step4_examples} lists example human-readable reasons.
+
+%\begin{figure}[H]
+ % \centering
+  % replace with your PR curve overlay
+  %\includegraphics[width=0.70\textwidth]{figs/pr_curve_fusion.png}
+ % \caption{Precision–recall with (solid) and without (dashed) rule fusion.}
+ % \label{fig:step4_curve}
+%\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Examples from \texttt{predictions\_interpretable.csv} (abridged).}
+\label{tab:step4_examples}
+\begin{tabular}{|l|l|p{8.2cm}|}
+\hline
+\textbf{Plate/Well} & \textbf{$\hat p$, $S$} & \textbf{Reasons (excerpt)} \\\hline
+Jan30\_p6 / D5 & 0.88, 1.25 & High similarity ($\geq 66\%$) to different client; cross-primer consistent; AE recon error high. \\\hline
+Jan31\_p1 / A11 & 0.93, 0.50 & Cross-client identity; neighbourhood singleton; latent anomaly. \\\hline
+\end{tabular}
+\end{table}
+
+
+\section{Data and Final Per-Well Schema}
+\label{sec:data_schema}
+Each plate arrives as a single Excel file with one row per well (sequence, quality/trace metrics, metadata). The schema used in implementation is:
+
+\begin{table}[H]
+  \centering
+  \caption{Final schema used for per-well data (Excel input).}
+  \label{tab:final_table_schema_impl}
+  \begin{tabular}{|l|p{11cm}|}
+    \hline
+    \textbf{Column} & \textbf{Description} \\ \hline
+    Plate\_ID, Well\_Position & Plate and well identifiers. \\ \hline
+    Client\_ID, Barcode, DNA\_ID, Primer\_ID & Submission metadata (may be missing/duplicated). \\ \hline
+    Purification\_Status, PCR\_Size & Purification flag and PCR size (missing $\rightarrow -1$ sentinel). \\ \hline
+    DNA\_Sequence, DNA\_Sequence\_Quality & Base string and per-base Phred string. \\ \hline
+    TRACE\_SCORE, Noise\_Level, QtClass, PEAK\_WIDTH, artefact flags & Instrument/trace quality metrics and booleans. \\ \hline
+    TOTAL\_BASES, GOOD\_BASES, INDEL, EARLY/MID/LATE\_SIGNAL, EARLY\_MIX, LATEMIX & Derived quality/structure features. \\ \hline
+    Anomaly & Manual label (if available) for evaluation only. \\ \hline
+  \end{tabular}
+\end{table}
+
+\noindent\textit{Feature usage note.} Although \texttt{TOTAL\_BASES} and \texttt{GOOD\_BASES} may be present in the raw Excel, they are \emph{not} used by the classifier because they correlate with trimming outcomes and introduced redundancy and noise in early trials.
+
+\section{Preprocessing}
+\label{sec:preproc}
+
+\subsection{Quality Trimming and Ambiguity Handling}
+Sequences are trimmed from both ends until \textbf{10 consecutive bases} have Phred $\geq 20$ (Q20 $\approx$99\% accuracy). Ambiguous IUPAC bases (\texttt{N}, \texttt{Y}, \ldots) are \emph{not} fed to the sequence model; wells that still contain ambiguity after trimming are flagged (\texttt{Has\_Non\_ACTG\_Bases}=1). Trimming is anchored on the highest-quality central segment and expands outwards until the Q20$\times$10 criterion is satisfied, reducing tail noise.
+
+\subsection{Minimum Length and Short-Read Path}
+We build 4-mer windows only for reads with $\geq 150$ trimmed bases. Wells shorter than this threshold skip the AE path (latents/reconstruction become \texttt{NaN}); they are handled by rules and by the tabular classifier using metadata/trace features plus \texttt{Short\_Read}/\texttt{NoLatent} flags.
+
+\subsection{Sequence Representation and Single-Base Sensitivity}
+We use overlapping, position-aware 4-mer tokenization into fixed-length \textbf{150-token} windows (4\textsuperscript{mer} vocabulary size $=256$). A single-base difference perturbs local 4-mer composition, which makes mismatches separable in both the AE latent space and the alignment-derived features.
+
+\subsection{Plate-Local Similarity and Clustering Signals}
+For each plate we compute pairwise sequence identity using a local BLAST-like alignment; wells with identity $\geq 66\%$ form neighbourhoods. These neighbourhoods are \emph{plate-scoped} (IDs not reused across plates) and serve to engineer:
 \begin{itemize}
-\item \textbf{Phase 1:} Data Collection \& Preprocessing (Weeks 1–10)
-\item \textbf{Phase 2:} Model Development \& Training (Weeks 10–17)
-\item \textbf{Phase 3:} Evaluation \& Refinement (Weeks 17–22)
-\item \textbf{Phase 4:} Deployment \& Documentation (Weeks 19–27)
+  \item \texttt{Mixed\_Client} / \texttt{Mixed\_Primer} flags within a neighbourhood,
+  \item nearest-neighbour identity features,
+  \item ``same DNA\_ID, different primer'' consistency checks (and reverse-complement checks when direction is available).
 \end{itemize}
+
+\subsection{Curation Notes}
+A falsely labelled well (\texttt{F3}) was removed after manual verification. \texttt{PCR\_Size} is normalised and uses \texttt{-1} when absent.
+
+\subsection{Per-Step Inputs and Outputs (I/O Contracts)}
+\label{sec:io_contracts}
+
+\begin{table}[H]\centering
+\caption{Step~1 -- Preprocessing (\texttt{preprocess\_plates\_wrapper.py})}
+\begin{tabular}{|p{3.8cm}|p{9.8cm}|}\hline
+\textbf{Input} & Excel plate (\texttt{input/\{plate\}.xlsx}) \\ \hline
+\textbf{Ops} & Q20 trimming (10 consecutive bases), ambiguity flags (N/Y), 4-mer tokenization into fixed-length 150-token windows for reads $\geq 150$, plate-local identity ($\geq 66\%$). \\ \hline
+\textbf{Output} & \texttt{Step\_1/output/\{plate\}\_kmer\_windows.npy}; \texttt{Step\_1/output/\{plate\}\_window\_map.npy}; \texttt{Step\_1/output/\{plate\}\_metadata.xlsx}; and a BLAST neighbourhood layout HTML under \texttt{Step\_1/output/visualizations/}. The orchestrator copies the HTML to \texttt{results/\{plate\}/\{plate\}\_layout.html}. \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{Step~2 -- Autoencoder (\texttt{auto\_encoder\_wrapper.py})}
+\begin{tabular}{|p{3.8cm}|p{9.8cm}|}\hline
+\textbf{Input} & \texttt{\{plate\}\_kmer\_windows.npy}, \texttt{\{plate\}\_window\_map.npy}, metadata (from Step~1 outputs). \\ \hline
+\textbf{Ops} & Train per-plate Embedding+Conv1D seq-to-seq AE over 150-token inputs; export latent (mean-pooled) and reconstruction error per well. \\ \hline
+\textbf{Output} & \texttt{Step\_2/output/\{plate\}\_autoencoder.h5}, \texttt{Step\_2/output/\{plate\}\_latent\_vectors.npy}, \texttt{Step\_2/output/\{plate\}\_with\_errors.xlsx}, \texttt{Step\_2/output/\{plate\}\_loss\_curve.png}. \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{Step~3 -- Features \& Classifier}
+\begin{tabular}{|p{3.8cm}|p{9.8cm}|}\hline
+\textbf{Input} & AE exports + Step~1 metadata + similarity features. \\ \hline
+\textbf{Ops} & Build tabular features (drops \texttt{Client\_ID}/\texttt{Primer\_ID} for modeling). LightGBM scoring with calibrated threshold. \\ \hline
+\textbf{Output} & \texttt{results/\{plate\}/features\_lgbm.csv}, \texttt{results/\{plate\}/predictions\_lgbm.csv}. \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{Step~4 — Post-hoc Rules \& Exports (\texttt{generate\_results\_wrapper.py}).}
+\begin{tabular}{|p{3.8cm}|p{9.8cm}|}\hline
+\textbf{Input} & \texttt{predictions\_lgbm.csv} + rule features. \\ \hline
+\textbf{Ops} & Weighted rule scoring and fusion with $\hat p$. \\ \hline
+\textbf{Output} & \texttt{predictions\_interpretable.csv}, \texttt{predictions\_interpretable\_labview.csv}. \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Per-Plate Conv1D Autoencoder}
+\label{sec:ae}
+
+\paragraph{Rationale.} Plates are independent operational units; training one AE per plate lets the model learn only that plate’s distribution (``small agents''). A global AE was tested and underperformed; the plate AE was kept (a configuration flag allows switching).
+
+\paragraph{Model.} A sequence-to-sequence Conv1D autoencoder over 4-mer tokens:
+\begin{itemize}
+  \item \textbf{Tokenization:} 4-mer vocabulary ($|\mathcal{V}|=256$), inputs are \textbf{150-token} windows derived from trimmed reads.
+  \item \textbf{Encoder/Decoder:} \texttt{Embedding}$(256,32)$ with Conv1D blocks to a \emph{bottleneck} of 32; symmetric decoding with a \texttt{TimeDistributed(Dense(256, softmax))}.
+  \item \textbf{Loss \& training:} sparse categorical cross-entropy; \texttt{BATCH\_SIZE=64}, \texttt{EPOCHS=40}, early stopping (\texttt{patience=5}).
+\end{itemize}
+
+Outputs per well: (i) mean reconstruction error across windows, (ii) a 32-dim latent (mean-pooled). Reads $<150$ bases or with post-trim ambiguity produce \texttt{Short\_Read}/\texttt{Has\_Non\_ACTG\_Bases} flags and skip AE.
+
+\section{Classifier and Evaluation Protocol}
+\label{sec:clf}
+
+\subsection{Retired Configurations}
+\label{sec:retired_configs}
+We trialled (i) a global AE trained across plates, (ii) an MLP classifier with binary cross-entropy and class weights, and (iii) XGBoost. The global AE underperformed due to loss of plate context; the MLP was more sensitive to class imbalance and data scarcity; XGBoost was comparable to LightGBM but less stable under plate-wise cross-validation. LightGBM with calibrated thresholding was therefore adopted.
+
+\subsection{Tabular Classifier}
+We compared MLP, XGBoost, and LightGBM; LightGBM was selected for stability under plate-wise cross-validation and strong performance with mixed dense/flag features. Class imbalance is addressed via positive class weighting and decision-threshold tuning (recall-priority). The default training threshold used in CV is $\tau=0.47$ (deployment default; calibration protocol in Chapter~\ref{cha:Evaluation}); Step~4 later fuses $\hat p$ with rules for deployment decisions.
+
+\subsection{Train/Test Split and Leakage Control}
+All splits are \textbf{by plate} (plate-wise GroupKFold): entire plates are held out. This prevents leakage that would occur if wells from the same plate appeared in both train and test.\footnote{Earlier 70/30 per-plate splits were discarded due to implicit leakage.}
+During training, each fold produces a model; deployment trains a single final model on all training plates after CV hyperparameter selection, avoiding fold-specific $\hat{y}$ discrepancies.
+
+\subsection{Feature Engineering and Leakage Mitigation}
+Features are grouped as:
+\begin{itemize}
+  \item \textbf{AE features:} reconstruction error; 32-dim latent.
+  \item \textbf{Similarity/rule features:} nearest-neighbour identity; \texttt{Mixed\_Client}/\texttt{Mixed\_Primer}; ``same DNA\_ID, different primer'' checks; forward/reverse reverse-complement similarity.
+  \item \textbf{Trace/instrument:} TRACE\_SCORE, Noise\_Level, PEAK\_WIDTH, artefact flags, region qualities.
+  \item \textbf{Meta flags:} \texttt{Short\_Read}, \texttt{Has\_Non\_ACTG\_Bases}.
+\end{itemize}
+We explicitly \emph{remove} \texttt{Client\_ID} and \texttt{Primer\_ID} from classifier inputs to avoid shortcut learning and cross-plate leakage; both remain available to the rule layer and for explanations. Permutation importance checks verified that sequence-derived features retained predictive weight after these removals.
+
+\section{Post-hoc Rule Layer}
+\label{sec:rules}
+Rules are applied after model scoring; they can \emph{escalate} or \emph{override} based on lab policy. We compute a weighted rule score $S$ (sum of rule weights) and then fuse it with the model probability $\hat p$.
+
+\subsection{Rule Inventory and Weights}
+\begin{table}[H]\centering
+\caption{Post-hoc rules and weights used to build the weighted score $S$.}
+\label{tab:rules}
+\begin{tabular}{|p{9.0cm}|c|}
+\hline
+\textbf{Rule (fires when true)} & \textbf{Weight} \\ \hline
+Reverse-complement mismatch between likely forward/reverse pair (similarity $<\!0.98$) & $+1.00$ \\ \hline
+Same \texttt{DNA\_ID} with different primers but high mismatch & $+1.00$ \\ \hline
+Nearest neighbour is a different client with identity $\geq 66\%$ & $+0.50$ \\ \hline
+Neighbourhood mixes multiple clients ($\geq 66\%$ identity group) & $+0.50$ \\ \hline
+High AE reconstruction error (per-well) & $+0.50$ \\ \hline
+Singleton well but highly similar to a different client & $+0.75$ \\ \hline
+High model confidence only ($\hat p > 0.90$) & $+0.50$ \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Fusion With Model Probability}
+A well is flagged when any of the following holds:
+\[
+\boxed{\;
+S \ge 1.0
+\;\;\lor\;\;
+(\text{Recon\_Error} > 7.5\times 10^{-3} \land \hat p > 0.50)
+\;\;\lor\;\;
+(S \ge 0.5 \land \hat p > 0.75)
+\;\;\lor\;\;
+\hat p > 0.95 \;
+}
+\]
+
+\paragraph{Outputs.} For plate \texttt{\textit{P}}, Step~4 writes:
+\begin{itemize}
+  \item \texttt{results/\textit{P}/predictions\_interpretable.csv} (full reasons and intermediate fields),
+  \item \texttt{results/\textit{P}/predictions\_interpretable\_labview.csv} (compact export with \texttt{Plate\_Name, Well\_Position, Client\_ID, DNA\_ID, Primer\_ID, DNA\_Sequence, Anomaly\_Probability, Weighted\_Rule\_Score, Num\_Reasons, Anomaly\_Reason, Explanation, Anomaly\_Flagged}).
+\end{itemize}
+We also assign an \texttt{Anomaly\_Confidence} label (\emph{High} if $S\ge 1.5$, \emph{Medium} if $S\ge 1.0$, \emph{Low} if $S>0$, else \emph{None}).
+
+
+
+\section{Limitations and Failure Modes}
+\label{sec:limits}
+\textbf{Labels.} Only four labelled plates; some anomaly types are rare.  
+\textbf{Short/ambiguous reads.} Wells $<150$ bases or with \texttt{N}/\texttt{Y} skip AE; detection then hinges on rules and trace features.  
+\textbf{Direction metadata.} Forward/reverse indicators are not always available; when present, reverse-complement checks are applied; otherwise omitted.  
+\textbf{Stochasticity.} Seeds are not fixed; minor run-to-run variation is expected (see Appendix~Z for variance ranges).
+
+\section{Future Work}
+\label{sec:future}
+\begin{itemize}
+  \item \textbf{Forward/Reverse consensus:} derive per-sample consensus sequences when reliable direction indicators are available.
+  \item \textbf{Richer alignment features:} integrate global (Needleman–Wunsch) and local (Smith–Waterman) scores systematically into features and rules.
+  \item \textbf{Label growth and phasing:} increase labelled plates and phase development (start with rule-easier anomaly types, progressively add harder single-base variants).
+  \item \textbf{Model alternatives:} assess XGBoost vs.~LightGBM at larger scale; evaluate contrastive/self-supervised sequence encoders.
+\end{itemize}
+
+
+\section{Reproducibility}
+\label{sec:repro}
+Processing is modular and scripted; the watcher processes plates serially and never blocks on failures:
+\begin{itemize}
+  \item \textbf{Preprocessing} (trimming, ambiguity, BLAST-like neighbourhoods; 147-token windows, stride 50).
+  \item \textbf{Autoencoder} (per-plate training; latent \& reconstruction export).
+  \item \textbf{Feature build} (merge AE, similarity, trace, and flags).
+  \item \textbf{Classifier} (GroupKFold by \texttt{Plate\_ID} during development, $\tau=0.48$; final model retrained on all training plates).
+  \item \textbf{Results \& rules} (interpretable CSVs, LabVIEW export).
+\end{itemize}
+\paragraph{Artifacts.} Each run writes to \texttt{results/\{plate\}/}:\\
+\texttt{\{plate\}\_kmer\_windows.npy}, \texttt{\{plate\}\_window\_map.npy}, \texttt{\{plate\}\_metadata.xlsx}, \texttt{\{plate\}\_autoencoder.h5}, \texttt{\{plate\}\_latent\_vectors.npy}, \texttt{\{plate\}\_with\_errors.xlsx}, \texttt{\{plate\}\_loss\_curve.png}, \texttt{features\_lgbm.csv}, \texttt{predictions\_lgbm.csv}, \texttt{predictions\_interpretable.csv}, \texttt{predictions\_interpretable\_labview.csv}, and \texttt{\{plate\}\_layout.html}.

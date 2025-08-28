@@ -3,23 +3,126 @@
 %% chapter5.tex
 %% NOVA thesis document file
 %%
-%% Chapter with lots of dummy text
+%% Chapter 5 — Validation & Evaluation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \typeout{NT FILE chapter5.tex}%
 
-\chapter{Lorem Ipsum}
-\label{cha:lorem_ipsum}
+\chapter{Validation \& Evaluation}
+\label{cha:Evaluation}
 
-\lipsum[1-100]
-\lipsum[1-100]
-\lipsum[1-100]
-% \lipsum[1-100]
-% \lipsum[1-700]
-% \lipsum[1-700]
-% \lipsum[1-700]
-% \lipsum[1-700]
-% \lipsum[1-700]
-% \lipsum[1-700]
-% \lipsum[1-700]
-% \lipsum[1-700]
+This chapter reports the experimental setup, metrics, baselines, and results used to validate \textsc{Prometheus}. We quantify performance under plate-wise cross-validation, study design trade-offs via ablations, and present per-plate case studies.
+
+\section{Experimental Setup}
+\label{sec:exp_setup}
+\paragraph{Data.}
+We evaluate on four labeled plates provided by the laboratory:
+\texttt{January\_30\_2025\_p6},
+\texttt{January\_31\_2025\_p1},
+\texttt{March\_12\_2025\_p1\_siso},
+\texttt{March\_13\_2025\_p4\_siso}.
+Each plate is processed independently from Excel input (cf.~Chapter~\ref{cha:Implementation}).
+
+\paragraph{Preprocessing constants.}
+Q20 trimming (10 consecutive bases), position-aware 4-mer tokenization into 150-token windows (stride configurable), BLAST-like in-plate neighbourhoods at $\geq 66\%$ identity, ambiguity flags for non-\{A,C,T,G\} bases. Short reads ($<150$) skip the AE path.
+
+\paragraph{Models.}
+Per-plate Conv1D autoencoder (sequence-to-sequence over 4-mer tokens) exports per-well latent vectors and reconstruction errors. The tabular classifier is LightGBM (features from AE, similarity, trace, and meta flags; \texttt{Client\_ID}/\texttt{Primer\_ID} are excluded from model inputs to avoid leakage).
+
+\paragraph{Hardware.}
+(Describe machine/CPU/GPU; include training/inference times if measured.)
+
+\section{Validation Protocol}
+\label{sec:protocol}
+\paragraph{Plate-wise cross-validation.}
+We use GroupKFold by \texttt{Plate\_ID} so that entire plates are held out. No wells from a test plate appear in training. After CV and hyperparameter selection, a final model is retrained on all training plates for deployment (Chapter~\ref{cha:Implementation}).
+
+\paragraph{Threshold calibration.}
+The deployment decision threshold is set to $\tau = 0.47$ using validation folds to prioritize recall (fewer false negatives) while maintaining acceptable precision. Post-hoc fusion with rules follows Chapter~\ref{cha:Implementation}, Eq./logic therein.
+
+\paragraph{Baselines.}
+For context, we compare against the original proposal’s direction:
+(i) k-mer clustering + Random Forest, and
+(ii) a global (cross-plate) AE + MLP/XGBoost variants.
+(Where applicable, we report their results under the same CV protocol.)
+
+\section{Metrics}
+\label{sec:metrics}
+Given label imbalance, we report:
+\[
+\text{Precision}=\frac{TP}{TP+FP},\quad
+\text{Recall}=\frac{TP}{TP+FN},\quad
+F_1=\frac{2\cdot \text{Prec}\cdot \text{Rec}}{\text{Prec}+\text{Rec}}
+\]
+We also include per-plate confusion matrices, PR-AUC (preferred over ROC-AUC under imbalance), and calibration curves (reliability diagrams; Brier score).
+
+\section{Overall Results}
+\label{sec:overall_results}
+Table~\ref{tab:overall_metrics} summarizes mean $\pm$ std across held-out plates. Detailed per-plate results follow.
+
+\begin{table}[H]\centering
+\caption{Overall performance under plate-wise CV (mean $\pm$ std).}
+\label{tab:overall_metrics}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+Model & Precision & Recall & F1 & PR-AUC \\ \hline
+\textsc{Prometheus} (LGBM + AE + rules) & -- & -- & -- & -- \\ \hline
+Proposal baseline (DBSCAN + RF) & -- & -- & -- & -- \\ \hline
+Global AE + MLP/XGB (abl.) & -- & -- & -- & -- \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Per-Plate Results}
+\label{sec:per_plate}
+For each plate we report metrics, a confusion matrix, model score distributions, and qualitative notes.
+
+\subsection{\texttt{January\_30\_2025\_p6}}
+(Insert a small table of metrics, and a brief narrative of the large cross-client homology cluster flagged by rules + similarity features.)
+
+\subsection{\texttt{January\_31\_2025\_p1}}
+(Include notes on cross-client identical sequences; AE recon-error histogram if helpful.)
+
+\subsection{\texttt{March\_12\_2025\_p1\_siso}}
+(Notes on multiple cross-client homologies; add plate layout screenshot if desired.)
+
+\subsection{\texttt{March\_13\_2025\_p4\_siso}}
+(Notes on multiple clusters; show PR curve or confusion matrix.)
+
+\section{Ablation Study}
+\label{sec:ablation}
+We ablate components to quantify their contributions. Table~\ref{tab:ablation_numbers} reports per-plate metrics; qualitative effects matched those in Chapter~\ref{cha:Implementation} (design section).
+
+\begin{table}[H]\centering
+\caption{Ablations (per-plate Precision / Recall / F1).}
+\label{tab:ablation_numbers}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+Configuration & J30\_p6 & J31\_p1 & M12\_p1\_siso & M13\_p4\_siso \\ \hline
+Full model (AE per plate + LGBM + rules) & -- & -- & -- & -- \\ \hline
+No AE latents (tabular only) & -- & -- & -- & -- \\ \hline
+No BLAST neighbourhoods & -- & -- & -- & -- \\ \hline
+Add Client\_ID/Primer\_ID to model (leakage) & -- & -- & -- & -- \\ \hline
+Global AE (not per-plate) & -- & -- & -- & -- \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Error Analysis and Interpretability}
+\label{sec:error_analysis}
+We analyze false positives/negatives by inspecting:
+(i) AE reconstruction error vs.\ similarity features,
+(ii) post-hoc rule contributions (weighted score $S$),
+(iii) feature permutation importance and (optionally) SHAP values for LGBM.
+Case studies (Appendix~\ref{app:case_images}) show representative chromatograms, plate layouts, and reasons in \texttt{predictions\_interpretable.csv}.
+
+\section{Robustness Checks}
+\label{sec:robustness}
+We probe sensitivity to: (a) BLAST identity threshold (e.g., 60–75\%); (b) window length and stride; (c) ambiguity handling; (d) anomaly class weight; and (e) short-read prevalence.
+We report any notable swings in PR-AUC and recall.
+
+\section{Runtime \& Throughput}
+\label{sec:runtime}
+We measure runtime per step and per plate (median $\pm$ IQR). The watcher processes plates sequentially; Step~5 runs asynchronously post-success.
+
+\section{Summary}
+\label{sec:eval_summary}
+\textsc{Prometheus} achieves [insert headline result], with strongest gains from AE latents + BLAST neighbourhood features and the post-hoc rule fusion. Leakage-prone features (\texttt{Client\_ID}, \texttt{Primer\_ID}) are excluded from modeling to preserve generalization.
