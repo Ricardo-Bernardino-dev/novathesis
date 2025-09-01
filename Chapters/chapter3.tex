@@ -19,12 +19,11 @@
 \label{cha:Proposal}
 
 
-This chapter presents the original proposal that guided the early stages of this thesis. It outlines the initial plan for developing an AI-driven tool to automate anomaly detection in Sanger sequencing workflows. The proposal included the overall vision, technical approach, and model selection strategy that informed the project’s first phase.
+This chapter presents the original \emph{thesis proposal} that guided the early stages of this work. It outlines the initial plan for developing an AI-driven tool to automate anomaly detection in Sanger sequencing workflows, including the overall vision, technical approach, and model choices that informed the first phase. The subsequent chapters (\S\ref{cha:Implementation}--\ref{cha:Evaluation}) document how the design evolved and why.
 
 The goal of the proposed system was to improve the efficiency and accuracy of well verification in 96-well sequencing plates by reducing reliance on manual review. By leveraging machine learning techniques, the system was expected to automatically categorize DNA samples based on sequence similarity and associated metadata, enabling faster detection of contamination or sequencing errors.
 
-The chapter begins with an overview of the laboratory processes, including sample preparation, sequencing using the ABI3730xl DNA analyzer, and the structure of the resulting data. It then introduces the original architecture and data preprocessing pipeline proposed for this task, including early choices such as DBSCAN and Random Forest. This proposal served as the conceptual foundation for the subsequent development.
-
+The chapter begins with an overview of laboratory processes and data generation, then introduces the original architecture and preprocessing pipeline (e.g., DBSCAN + Random Forest). This proposal served as the conceptual foundation for later development.
 
 \section{Laboratory Processes}
 \label{sec:laboratory}
@@ -48,7 +47,7 @@ The laboratory workflow begins with the reception of DNA samples from various cl
   \label{fig:platecoords}
 \end{figure}
 
-Upon receipt, some samples require human intervention to prepare them for sequencing. For instance, samples with uneven DNA concentrations must be normalized to ensure consistent sequencing quality. Additionally, samples that do not include a primer must have the appropriate primer added by laboratory staff. These steps are critical to ensure the accuracy and reliability of the sequencing results. Each plate also contains 1 well reserved solely for quality control, named \textit{Control}.
+Upon receipt, some samples require human intervention to prepare them for sequencing. For instance, samples with uneven DNA concentrations must be normalized to ensure consistent sequencing quality. Additionally, samples that do not include a primer must have the appropriate primer added by laboratory staff. These steps are critical to ensure the accuracy and reliability of the sequencing results. Each plate also contains 1 well reserved solely for quality control, named control well.
 
 Once prepared, these plates are then loaded into a thermocycler, which includes the steps of DNA denaturation, primer annealing, and extension with fluorescently labeled dideoxynucleotides. Afterwards the electrophoresis is performed on the ABI3730xl sequencer. The ABI3730xl sequencer then generates raw data files containing fluorescence intensity readings, which are subsequently basecalled to produce DNA sequences.
 
@@ -124,23 +123,35 @@ After the anomalies are quarantined, these possibly contaminated samples are re-
 
 \paragraph{Labeled Anomalies:} Although anomalies are not registered automatically in the laboratory's database, a small set of manually verified anomalies was made available upon request. Due to the rarity of confirmed contamination or sequencing errors in practice, the laboratory only identified \textbf{four plates} with known anomalies during the course of the data collection of this thesis. These labeled plates were used for evaluating the performance of the proposed models against the laboratory’s ground truth. This scarcity of labeled anomalies further justified the adoption of machine learning strategies throughout the project.
 
-The complexity and subjectivity involved in these manual steps highlighted the need for a consistent and automated approach, which motivated the development of an AI-based system described in the next sections.
+\begin{table}[H]
+\centering
+\caption{Manual workflow vs. proposed automation (proposal phase).}
+\label{tab:manual_to_auto}
+\begin{tabular}{|p{5.2cm}|p{9cm}|}
+\hline
+\textbf{Manual Step} & \textbf{Proposed Automation (at proposal time)} \\ \hline
+Control-well check & Rule: if control \texttt{NOT OK} $\Rightarrow$ quarantine entire plate. \\ \hline
+Cluster sequences ($\geq$66\% similarity) & DBSCAN over k-mer vectors to form clusters; ignore outliers. \\ \hline
+Different clients, very similar sequences & Cluster-level metadata checks: flag mixed-client clusters. \\ \hline
+Different primers, very similar sequences & Cluster-level rule: flag unexpected primer–sequence similarity. \\ \hline
+Forward vs. reverse mismatch (same DNAID) & Pairwise alignment and per-sample rules; escalate on single-base mismatch. \\ \hline
+\end{tabular}
+\end{table}
 
 \section{Initial Proposed Architecture}
 \label{sec:initial_architecture}
 
-The initial system design aimed to automate the manual verification of 96-well Sanger sequencing plates using artificial intelligence. The proposed approach focused on replicating the laboratory’s reasoning process using a combination of clustering techniques and anomaly detection models. The intention was to streamline the pipeline from data ingestion to anomaly flagging, leveraging both sequence similarity and metadata.
+Grounded in the laboratory workflow and data described above, we formulated an initial theoretical approach to automate plate-level quality control. The initial system design aimed to automate the manual verification of 96-well Sanger sequencing plates using artificial intelligence. The proposed approach focused on replicating the laboratory’s reasoning process using a combination of clustering techniques and anomaly detection models. The intention was to streamline the pipeline from data ingestion to anomaly flagging, leveraging both sequence similarity and metadata.
 
 This section presents the architecture that was initially envisioned, including the database schema, preprocessing pipeline, and the selection of machine learning models. This intial design served as a conceptual and experimental foundation.
 
-\subsection{Database Structure}
-From the beginning of the project, data was consistently structured and received as individual Excel files, one per 96-well plate. Each file contains up to 96 rows, each representing a single well, with columns aggregating all relevant metadata, DNA sequence information, and signal quality metrics. This format, maintained throughout the entire pipeline, provided a practical balance between laboratory needs and computational workflows. It also facilitated modular, per-plate analysis, aligned with how the laboratory manually reviews and processes sequencing results.
 
-Although a NoSQL-style architecture was briefly considered during the proposal phase, in which each plate would be treated as a document containing all associated files and metadata, this alternative was never implemented. The structured `.xlsx` format proved to be efficient, clean, and well-suited for both preprocessing and modeling tasks. Its tabular nature made it easy to ingest, process, and analyze the data, while preserving well-level granularity.
+\subsection{Database Structure}
+
+At proposal time we defined a \emph{logical per-well table schema} independent of storage technology. A NoSQL plate-as-document option was briefly considered but deferred. The essential idea was to model, for each plate, a single row per well aggregating identifiers, sequence text, quality metrics, and run metadata. The concrete mechanism to populate this schema (a unified per-plate export) was implemented later during the development phase (see Chapter~\ref{cha:Implementation}).
 
 \paragraph{Original Proposed Schema:}  
 At the proposal stage, the following schema was envisioned based on assumptions about data availability and early exploration of STAB VIDA’s sequencing workflow. The table included planned fields ranging from raw fluorescence traces to primer sequences and purification metadata.
-
 
 \begin{table}[H]
   \centering
@@ -168,8 +179,10 @@ At the proposal stage, the following schema was envisioned based on assumptions 
   \label{tab:unified_table}
 \end{table}
 
-This table structure ensures that all relevant information of each well derived from different generated files, is stored in a single organized row, simplifying data retrieval and analysis. It includes fields for plate and well identification, sequencing data, quality metrics, and metadata, making it suitable for both clustering and contamination detection tasks.
- 
+This table structure ensured that all relevant information of each well derived from different generated files, is stored in a single organized row, simplifying data retrieval and analysis. It includes fields for plate and well identification, sequencing data, quality metrics, and metadata, making it suitable for both clustering and contamination detection tasks.
+
+\paragraph{Operational dependency (proposal).}
+At the time of the proposal, a unified per-plate export did not yet exist. We specified this as an implementation requirement; the company later delivered a backend export page that produced the input needed for this schema (cf. Chapter~\ref{cha:Implementation}).
 
 \subsection{Data Preprocessing (Feature Engineering)}
 
@@ -181,7 +194,7 @@ Raw sequencing data contains noise, in the form of poor base quality, particular
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.7\textwidth]{noise1.png}
-  \caption{Visualization of noise in the beggining of the DNA sequence, using 4peaks.}
+  \caption{Visualization of noise in the beginning of the DNA sequence, using 4peaks.}
   \label{fig:noise1}
 \end{figure}
 
@@ -292,31 +305,46 @@ To leverage the limited labeled anomalies provided by the laboratory team, a sem
     \end{itemize}
 \end{itemize}
 
-\subsection{Evaluation Metrics \& Model Refinement}
-The model is evaluated using clustering and anomaly detection metrics to ensure effectiveness. For clustering, the silhouette score (cluster separation/cohesion) and Davies-Bouldin index (cluster compactness/separation) are used. Anomaly detection is assessed via precision, recall, F1-score, and a confusion matrix to analyze false positives/negatives. 
-
-Iterative refinement includes tuning DBSCAN (\texttt{eps}, \texttt{min\_samples}) and Random Forest hyperparameters using grid/random search. Rule-based post-processing (e.g., sequence length thresholds, mismatch tolerances) could also further improve accuracy by reducing false positives.
+\subsection{Evaluation (Planned)}
+Clustering quality would be scored via silhouette/Davies–Bouldin; anomaly detection via precision, recall, F1, and confusion matrices. Thresholds would be tuned to prioritize recall (safety-first), as in this proposal stage, it was already understood that the laboratory team prioritized a higher percentage of a plate being flagged as an anomaly, given that all anomalies were successfully detected, rather than some anomalies managing to slip away detection due to a low percentage of flagged wells.
 
 \subsection{Frameworks, Languages \& Tools}
-The development and implementation of the proposed AI-driven tool rely on the following technologies, selected for their suitability in data processing, machine learning, and deployment:
+The development and implementation of the proposed AI-driven tool relied on the following technologies, selected for their suitability in data processing, machine learning, and deployment:
 
 \begin{table}[h]
 \centering
-\caption{Frameworks, Languages \& Tools}
+\caption{Planned frameworks and tools (proposal stage).}
 \label{tab:frameworks}
-\begin{tabular}{|p{3.5cm}|p{3.5cm}|p{6cm}|}
+\begin{tabular}{|p{3.6cm}|p{3.8cm}|p{6.2cm}|}
 \hline
-\textbf{Category} & \textbf{Tools/Frameworks} & \textbf{Choice Justification} \\ \hline
-Programming Language & Python & Widely used for scientific computing and machine learning, with extensive libraries. \\ \hline
-Data Processing & NumPy, Pandas, Biopython & Efficient for numerical operations, data manipulation, and bioinformatics tasks. \\ \hline
-Machine Learning & Scikit-learn, Imbalanced-learn & Comprehensive libraries for clustering, classification, and handling imbalanced data. \\ \hline
-Visualization & Matplotlib, Seaborn & Provide intuitive and customizable plotting capabilities for data analysis. \\ \hline
-Database Management & SQLite, PostgreSQL & Lightweight and scalable solutions for storing and querying structured data. \\ \hline
-Version Control & Git, GitHub & Essential for collaborative development and version tracking. \\ \hline
-Deployment & Flask/FastAPI, Docker & Enable lightweight, scalable, and containerized deployment of the application. \\ \hline
-Bioinformatics & Needleman-Wunsch, Smith-Waterman (via Biopython) & Standard algorithms for sequence alignment, implemented efficiently in Biopython. \\ \hline
-Computational Resources & HPC, Dedicated Server & Provide the necessary computational power for large-scale data processing and model training. \\ \hline
+\textbf{Category} & \textbf{Tools/Frameworks} & \textbf{Rationale / Status} \\ \hline
+Programming & Python & Scientific stack and bioinformatics ecosystem. \\ \hline
+Data Processing & NumPy, Pandas, Biopython & Numeric ops, tabular IO, sequence utilities. \\ \hline
+Machine Learning & scikit-learn, imbalanced-learn & DBSCAN, RF, sampling utilities. \\ \hline
+Visualization & Matplotlib, Seaborn & EDA and reporting. \\ \hline
+Database & SQLite / PostgreSQL & \emph{Considered} early; \textbf{not used}—per-plate Excel retained. \\ \hline
+Deployment & Flask/FastAPI, Docker & \emph{Considered} for a service wrapper; \textbf{not part} of final artifact. \\ \hline
+Bioinformatics & Needleman–Wunsch, Smith–Waterman (Biopython) & Alignment utilities for verification/analysis. \\ \hline
+Compute & Workstation / HPC & For batch preprocessing and experiments. \\ \hline
 \end{tabular}
 \end{table}
+
+
+\section{Limitations of the Proposal (Why We Pivoted)}
+\label{sec:proposal_limits}
+The proposal assumed that:
+\begin{enumerate}
+  \item bag-of-$k$-mers (order-agnostic) would suffice for similarity,
+  \item global clustering across plates would be informative, and
+  \item semi-supervised RF on cluster features would be robust under scarce labels.
+\end{enumerate}
+During implementation we identified key gaps (quantified in Chapter~\ref{cha:Evaluation}):
+\begin{itemize}
+  \item \textbf{Order sensitivity.} Bag-of-$k$-mers discarded base order; single-base mismatches—material to Sanger QC—were easily missed.
+  \item \textbf{Plate locality.} Anomalies are defined \emph{within} plates; global clusters risked cross-plate leakage and false structure.
+  \item \textbf{Label scarcity \& imbalance.} Supervised RF/MLP variants were unstable; we required stronger unsupervised signals (per-plate AE) and explicit rules.
+  \item \textbf{Ambiguity/short reads.} Treating \texttt{N}/\texttt{Y} as neutral tokens and padding short reads polluted representation learning.
+\end{itemize}
+These findings motivated the final design in Chapter~\ref{cha:Implementation}: plate-local, alignment-informed neighbourhoods; an order-aware \emph{per-plate} Conv1D autoencoder (latent + reconstruction error); a calibrated LightGBM classifier on engineered features (excluding identifiers); and a post-hoc rule layer for interpretable, policy-aligned decisions.
 
 

@@ -11,7 +11,7 @@
 \chapter{Validation \& Evaluation}
 \label{cha:Evaluation}
 
-This chapter reports the experimental setup, metrics, baselines, and results used to validate \textsc{Prometheus}. We quantify performance under plate-wise cross-validation, study design trade-offs via ablations, and present per-plate case studies.
+This chapter reports the experimental setup, metrics, baselines, and results used to validate \textsc{Prometheus}. We quantify performance under plate-wise cross-validation, study design trade-offs via ablations, and present per-plate case studies. It also consolidates the quantitative \emph{evidence} for the design pivots described in Chapter~\ref{cha:Implementation}.
 
 \section{Experimental Setup}
 \label{sec:exp_setup}
@@ -24,7 +24,7 @@ We evaluate on four labeled plates provided by the laboratory:
 Each plate is processed independently from Excel input (cf.~Chapter~\ref{cha:Implementation}).
 
 \paragraph{Preprocessing constants.}
-Q20 trimming (10 consecutive bases), position-aware 4-mer tokenization into 150-token windows (stride configurable), BLAST-like in-plate neighbourhoods at $\geq 66\%$ identity, ambiguity flags for non-\{A,C,T,G\} bases. Short reads ($<150$) skip the AE path.
+Q20 trimming (10 consecutive bases), position-aware 4-mer tokenization into 150-token windows (stride configurable, default 50), BLAST-like in-plate neighbourhoods at $\geq 66\%$ identity, ambiguity flags for non-\{A,C,T,G\} bases. Short reads ($<150$) skip the AE path.
 
 \paragraph{Models.}
 Per-plate Conv1D autoencoder (sequence-to-sequence over 4-mer tokens) exports per-well latent vectors and reconstruction errors. The tabular classifier is LightGBM (features from AE, similarity, trace, and meta flags; \texttt{Client\_ID}/\texttt{Primer\_ID} are excluded from model inputs to avoid leakage).
@@ -38,11 +38,11 @@ Per-plate Conv1D autoencoder (sequence-to-sequence over 4-mer tokens) exports pe
 We use GroupKFold by \texttt{Plate\_ID} so that entire plates are held out. No wells from a test plate appear in training. After CV and hyperparameter selection, a final model is retrained on all training plates for deployment (Chapter~\ref{cha:Implementation}).
 
 \paragraph{Threshold calibration.}
-The deployment decision threshold is set to $\tau = 0.47$ using validation folds to prioritize recall (fewer false negatives) while maintaining acceptable precision. Post-hoc fusion with rules follows Chapter~\ref{cha:Implementation}, Eq./logic therein.
+The deployment decision threshold is set to $\tau = 0.47$ using validation folds to prioritize recall (fewer false negatives) while maintaining acceptable precision. Post-hoc fusion with rules follows Chapter~\ref{cha:Implementation} (fusion equation therein).
 
 \paragraph{Baselines.}
 For context, we compare against the original proposal’s direction:
-(i) k-mer clustering + Random Forest, and
+(i) $k$-mer clustering + Random Forest, and
 (ii) a global (cross-plate) AE + MLP/XGBoost variants.
 (Where applicable, we report their results under the same CV protocol.)
 
@@ -55,6 +55,69 @@ Given label imbalance, we report:
 F_1=\frac{2\cdot \text{Prec}\cdot \text{Rec}}{\text{Prec}+\text{Rec}}
 \]
 We also include per-plate confusion matrices, PR-AUC (preferred over ROC-AUC under imbalance), and calibration curves (reliability diagrams; Brier score).
+
+\section{Evidence for Design Choices}
+\label{sec:evidence_design}
+This section provides the quantitative evidence that motivated the architectural pivots in Chapter~\ref{cha:Implementation}.
+
+\subsection{Step 1: BLAST-like neighbourhoods vs.\ DBSCAN@$k$-mer}
+\begin{table}[H]
+\centering
+\caption{Neighbourhood purity (\% same client within neighbourhoods), proposal vs.\ implemented.}
+\label{tab:step1_purity}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Plate} & \textbf{DBSCAN@$k$-mer (proposal)} & \textbf{BLAST-like (implemented)} \\\hline
+January\_30\_2025\_p6  & -- & -- \\\hline
+January\_31\_2025\_p1  & -- & -- \\\hline
+March\_12\_2025\_p1\_siso & -- & -- \\\hline
+March\_13\_2025\_p4\_siso & -- & -- \\\hline
+\end{tabular}
+\end{table}
+% Optionally include a figure with the plate layout graph.
+
+\subsection{Step 2: Utility of AE latents}
+\begin{table}[H]
+\centering
+\caption{Impact of AE latents on anomaly recall (LightGBM; plate-wise CV).}
+\label{tab:step2_latent_utility}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Setting} & \textbf{Recall} & \textbf{Precision} \\\hline
+Tabular (no latents) & -- & -- \\\hline
+Tabular + AE latents  & -- & -- \\\hline
+\end{tabular}
+\end{table}
+% Optionally include example AE loss curves per plate.
+
+\subsection{Step 3: Classifier comparison and leakage control}
+\begin{table}[H]
+\centering
+\caption{Classifier comparison (plate-wise CV).}
+\label{tab:step3_models}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Model} & \textbf{AUROC} & \textbf{AUPRC} & \textbf{F1} \\\hline
+Random Forest & -- & -- & -- \\\hline
+XGBoost       & -- & -- & -- \\\hline
+LightGBM      & -- & -- & -- \\\hline
+\end{tabular}
+\end{table}
+% Add a figure with permutation importance (w/ and w/o Client_ID/Primer_ID).
+
+\subsection{Step 4: Rule fusion}
+\begin{table}[H]
+\centering
+\caption{Examples from \texttt{predictions\_interpretable.csv} (abridged).}
+\label{tab:step4_examples}
+\begin{tabular}{|l|l|p{8.2cm}|}
+\hline
+\textbf{Plate/Well} & \textbf{$\hat p$, $S$} & \textbf{Reasons (excerpt)} \\\hline
+Jan30\_p6 / D5 & --, -- & High similarity ($\geq 66\%$) to different client; cross-primer consistent; AE recon error high. \\\hline
+Jan31\_p1 / A11 & --, -- & Cross-client identity; neighbourhood singleton; latent anomaly. \\\hline
+\end{tabular}
+\end{table}
+% Optionally include PR curves with/without fusion.
 
 \section{Overall Results}
 \label{sec:overall_results}
@@ -77,7 +140,7 @@ Global AE + MLP/XGB (abl.) & -- & -- & -- & -- \\ \hline
 For each plate we report metrics, a confusion matrix, model score distributions, and qualitative notes.
 
 \subsection{\texttt{January\_30\_2025\_p6}}
-(Insert a small table of metrics, and a brief narrative of the large cross-client homology cluster flagged by rules + similarity features.)
+(Insert metrics; note large cross-client homology cluster flagged by rules + similarity features.)
 
 \subsection{\texttt{January\_31\_2025\_p1}}
 (Include notes on cross-client identical sequences; AE recon-error histogram if helpful.)

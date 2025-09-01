@@ -81,25 +81,28 @@ The primary objective of this thesis is to develop an AI-powered tool that autom
   \item \textbf{Model Investigation}: Research an already existing robust AI algorithm fit and capable of detecting anomalies in the sequencing data, including signal inconsistencies, contamination, and unexpected DNA sequences.
   \item \textbf{Model Training and Validation}: Train and validate the AI algorithm using real-world datasets obtained from ABI3730xl sequencers, ensuring its applicability in practical laboratory settings.
   \item \textbf{Performance Evaluation}: Compare the AI tool's accuracy and efficiency against traditional manual verification methods, demonstrating its effectiveness in a real-world context.
-  \item \textbf{Deployment Strategy}: Develop an accessible online platform for deploying the AI tool, ensuring seamless integration into existing laboratory workflows and maximizing user adoption.
+  \item \textbf{Deployment Strategy}: Deploy the AI tool, ensuring seamless integration into existing laboratory workflows and maximizing user adoption.
 \end{itemize}
 
 By achieving these objectives, this research will not only improve the efficiency of STAB VIDA’s sequencing workflows but also contribute to the broader adoption of AI in genomics, paving the way for future innovations in the field.
+\noindent\emph{Note on scope.} The implemented system is a local pipeline integrated with the laboratory’s workflow. A networked service wrapper (e.g., web API) is considered future work rather than part of the deployed artifact.
 
 \section{Structure}
 \label{sec:Structure}
 
-This document is organized into four main chapters, each focusing on a critical aspect of the thesis:
+This document is organized into six main chapters, each focusing on a critical aspect of the thesis:
 
 \begin{itemize}
-\item \textbf{Introduction}: Provides the motivation, context, objectives, and structure of the thesis.
-\item \textbf{State of the Art \& Related Work}: Reviews existing literature and technologies in Sanger sequencing and AI applications in genomics.
-\item \textbf{Proposal}: Details the design and implementation of the proposed AI driven tool, including data collection, model training, and deployment.
-\item \textbf{Implementation}: Describes the actual development of the PROMETHEUS pipeline, including preprocessing, modeling, and integration.
-\item \textbf{Validation \& Evaluation}: Presents experimental results, model metrics, and a comparison with laboratory-confirmed anomalies.
-\item \textbf{Conclusion \& Future Work}: Summarizes the thesis contributions, discusses limitations, and proposes directions for future improvements.
+  \item \textbf{Chapter~\ref{cha:Introduction} -- Introduction}: Motivation, context, objectives, and structure.
+  \item \textbf{Chapter~2 -- State of the Art \& Related Work}: Key background in genomics and AI; related approaches to clustering and anomaly detection.
+  \item \textbf{Chapter~3 -- Proposal}: The original (baseline) design explored at project start and its assumptions.
+  \item \textbf{Chapter~\ref{cha:Implementation} -- Implementation}: Describes the actual development of the final pipeline, including orchestration, preprocessing, modeling, and rule fusion.
+  \item \textbf{Chapter~\ref{cha:Evaluation} -- Validation \& Evaluation}: Experimental setup, metrics, baselines, ablations, and per-plate case studies.
+  \item \textbf{Chapter~6 -- Conclusion \& Future Work}: Summary of contributions, limitations, and directions ahead.
 \end{itemize}
 
+
+The Proposal (Chapter~3) is treated as a baseline for comparison; the final system is specified in Chapter~4 and validated in Chapter~5.
 Each chapter is designed to guide the reader through the research journey, from identifying the problem to proposing and validating a solution. This structured approach ensures clarity and coherence, making the thesis accessible to both technical and non-technical audiences.
 The following chapter will delve into the state of the art, reviewing existing literature and technologies relevant to this research.
 % subsection suggestions_bugs_and_feature_requests (end)
