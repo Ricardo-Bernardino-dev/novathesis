@@ -36,27 +36,7 @@ The project evolved through continuous discussions with STAB VIDA’s biotechnol
 \end{itemize}
 These realities transformed the thesis from a straightforward ``build the planned system'' into an \emph{investigation} that bridged domain knowledge and robust ML/software engineering choices.
 
-\section{System Overview and Orchestration}
-\label{sec:system_overview}
-
-A watcher process \texttt{deploy\_prometheus.py} runs continuously at the project root. It polls the \texttt{input/} folder every few seconds and processes plates \emph{sequentially} (one at a time) through Steps~1--4. \textbf{After each attempt—success or failure—the input Excel is moved to \texttt{input/processed/}.} To re-run a failed plate, the file must be re-added to \texttt{input/}. After a successful run, a background routine (Step~5) is launched asynchronously for optional historical validation.
-
-\begin{enumerate}
-  \item \textbf{Step~1 -- Preprocessing} (\texttt{preprocess\_plates\_wrapper.py}): Q20 trimming, ambiguity flags, position-aware 4-mer tokenization, and plate-local similarity ($\geq$66\%).
-  \item \textbf{Step~2 -- Autoencoder (per plate)} (\texttt{auto\_encoder\_wrapper.py}): train seq-to-seq Conv1D AE; export per-well latent vectors and reconstruction errors.
-  \item \textbf{Step~3 -- Features \& Classifier} (\texttt{build\_features\_wrapper.py}, \texttt{lgbm\_classifier\_wrapper.py}): merge features; score with LightGBM (plate-wise CV during development, calibrated threshold).
-  \item \textbf{Step~4 -- Post-hoc Rules \& Exports} (\texttt{generate\_results\_wrapper.py}): fuse model scores with rules; save interpretable CSVs.
-  \item \textbf{Step~5 -- (Async) Historical/Taxonomic Check} (\texttt{verify\_anomalies\_with\_history.py}): launched \emph{after} a successful run to enrich flagged wells with optional BLAST taxonomy and customer-history alignment; runs in the background.
-\end{enumerate}
-
-\noindent\textit{Artifact locations.} Steps~1 and~2 write staging artifacts under \texttt{Step\_1/output/} and \texttt{Step\_2/output/}. The orchestrator copies \emph{and opens} the plate layout HTML at \texttt{results/\{plate\}/\{plate\}\_layout.html}. Step~3 writes \texttt{results/\{plate\}/features\_lgbm.csv} and \texttt{results/\{plate\}/predictions\_lgbm.csv}; Step~4 writes \texttt{results/\{plate\}/predictions\_interpretable.csv} and \texttt{results/\{plate\}/predictions\_interpretable\_labview.csv}.
-
-\section{From Proposal to Implementation: Stepwise Evolution}
-\label{sec:stepwise_evolution}
-
-This section bridges Chapter~\ref{cha:Proposal} to the implemented pipeline by comparing, per step, what was proposed, what we observed, and the change we made. Quantitative evidence for these pivots is presented in Chapter~\ref{cha:Evaluation}.
-
-\section{Data Access \& Collection (Implemented)}
+\section{Data Access \& Collection}
 \label{sec:impl_backend_access}
 
 Although the sequencing run produces multiple file types per well (\texttt{.ab1}, \texttt{.seq}, \texttt{.phd.1}, \texttt{.qual}, \texttt{.qualtrace}, etc.), these do not arrive as a single joined artifact by default. Operationally, STAB VIDA maintains a backend with several internal pages that expose different slices of information (run metadata, quality metrics, client identifiers, primer details, control-well status).
@@ -92,6 +72,123 @@ We collaborated with STAB VIDA’s backend engineering team to validate the expo
 
 \paragraph{Scope Note.}
 This subsection documents the operational access path realized during implementation. The internal backend itself is out of scope; our artifacts and experiments depend only on the exported per-plate Excel files.
+
+
+\section{Schema Revision \& Feature Policy}
+\label{sec:schema_revision}
+
+The unified export (Section~\ref{sec:impl_backend_access}) enabled us to \emph{revise} the initial draft schema from Chapter~\ref{cha:Proposal} (cf.\ \S\ref{sec:initial_architecture}) into a final, model-ready specification. This revision was driven by three principles learned during co-design with the laboratory:
+
+\begin{enumerate}
+  \item \textbf{Determinism over subjectivity.} We favor fields that are machine-deterministic and reproducible across plates. Free-text, user-entered identifiers (e.g., \texttt{DNA\_ID}, \texttt{Primer\_ID}) may be subjective (synonyms, typos, lab conventions) and are therefore \emph{not} used by the classifier.\footnote{Identifiers remain available for explanations and rule checks. See also \S\ref{sec:id_hygiene}.}
+  \item \textbf{Plate locality.} Features must reflect intra-plate reasoning (relative to sibling wells), avoiding cross-plate leakage.
+  \item \textbf{Safety-first \& leakage control.} We avoid features that encode lab outcomes or policies (e.g., control-well verdicts) to prevent target leakage and to keep the pipeline informative even when routine QC fails.
+\end{enumerate}
+
+\subsection{Final Per-Well Input Schema (with Roles)}
+\label{sec:final_schema_roles}
+
+Table~\ref{tab:schema_roles} lists the columns available in the \emph{per-plate Excel} and their role in the pipeline. ``Model'' means used by the classifier; ``Rules/Explain'' means used by the post-hoc logic and human-readable exports; ``Reporting Only'' means kept for traceability but not used downstream; ``Excluded'' means intentionally dropped at ingestion.
+
+\begin{table}[H]
+\centering
+\caption{Per-well columns (exact export) and their role in the final pipeline.}
+\label{tab:schema_roles}
+\begin{tabular}{|p{4.0cm}|p{4.0cm}|p{3.1cm}|p{6.3cm}|}
+\hline
+\textbf{Column} & \textbf{Type / Origin} & \textbf{Role} & \textbf{Rationale} \\ \hline
+
+\texttt{Plate\_ID}, \texttt{Well\_Position}, \texttt{Reaction\_ID}, \texttt{Worksheet\_Reaction\_ID}
+& Backend / keys
+& Rules/Explain
+& Traceability, grouping, dedup; not predictive (avoid leakage). \\ \hline
+
+\texttt{DNA\_Sequence}, \texttt{DNA\_Sequence\_Quality}
+& Basecalling-derived
+& Model
+& Drive trimming (Q20$\times$10), 4-mer windows, AE latents and reconstruction error. \\ \hline
+
+\texttt{TRACE\_SCORE}, \texttt{Noise\_Level}, \texttt{Dye\_Signal}, \texttt{QtClass}, \texttt{PEAK\_WIDTH}, \texttt{DETECTOR\_OVERLOAD}, \texttt{BUBBLE}, \texttt{EARLY\_SIGNAL}, \texttt{MID\_SIGNAL}, \texttt{LATE\_SIGNAL}, \texttt{INDEL}, \texttt{EARLY\_MIX}, \texttt{LATEMIX}
+& Instrument / trace metrics (\texttt{.ab1}/\texttt{.qualtrace})
+& Model
+& Stable QC proxies and artefact flags; empirically useful under plate-wise CV. \\ \hline
+
+\texttt{PCR\_Size}, \texttt{Purification\_Status}
+& LIMS / registry
+& Model
+& Included (normalized); \texttt{PCR\_Size} uses \texttt{-1} sentinel when missing. \\ \hline
+
+\texttt{TOTAL\_BASES}, \texttt{GOOD\_BASES}
+& Derived counts
+& \textit{Excluded}
+& Redundant with trimming outcomes; removal improved stability (ablation). \\ \hline
+
+\texttt{Client\_ID} (pseudonymous)
+& LIMS / registry
+& Rules/Explain
+& For mixed-client neighbourhood rules and explanations; \emph{excluded from classifier} to prevent shortcut learning. \\ \hline
+
+\texttt{DNA\_ID}, \texttt{Primer\_ID}
+& Free-text identifiers
+& Rules/Explain
+& Subjective/inconsistent across submissions; \emph{excluded from classifier} to avoid metadata dominance and cross-plate leakage. \\ \hline
+
+\texttt{Barcode}
+& LIMS / logistics
+& Reporting Only
+& Operational/audit metadata; not predictive. \\ \hline
+
+\texttt{Anomaly}
+& Manual label (rare)
+& Reporting Only
+& Evaluation only; never used in training. \\ \hline
+\end{tabular}
+\end{table}
+
+
+\paragraph{Engineered features (not raw columns).}
+From these inputs we derive: (i) \textbf{AE features} (reconstruction error; 32-d latent per well), (ii) \textbf{similarity features} from plate-local BLAST-like identity ($\geq 66\%$) and nearest-neighbour statistics, and (iii) \textbf{meta flags} (\texttt{Short\_Read}, \texttt{Has\_Non\_ACTG\_Bases}). These engineered variables are model-deterministic and reproducible.
+
+\subsection{Why Some Fields Are Excluded from the Classifier}
+\label{sec:exclusions_why}
+\begin{itemize}
+  \item \textbf{Control-well status.} Encodes a lab decision that can trivially predict ``bad plates'' and mask within-plate patterns. The lab explicitly requested insight \emph{even when} the control fails; we therefore keep it for reporting but exclude it from modeling.
+  \item \textbf{Free-text identifiers (\texttt{DNA\_ID}, \texttt{Primer\_ID}).} Naming conventions are subjective (synonyms/typos); when included, the model learned shortcuts and suppressed sequence features (confirmed via permutation importance). They remain available to rules/explanations.
+  \item \textbf{Client identifiers.} \texttt{Client\_Name} is removed for privacy; \texttt{Client\_ID} is kept for rules/explanations but excluded from the classifier to avoid cross-plate leakage and metadata dominance.
+  \item \textbf{Redundant counts (\texttt{TOTAL\_BASES}, \texttt{GOOD\_BASES}).} Highly correlated with trimming; excluding them improved stability.
+  \item \textbf{Direction (forward/reverse).} No reliable field in routine exports; inconsistent ad-hoc tags (``F''/``R''). We therefore do not model direction; reverse-complement checks are \emph{opportunistic} when a trustworthy pairing is present (see \S\ref{sec:direction_justification}).
+\end{itemize}
+
+\subsection{Resulting Feature Whitelist (Classifier)}
+\label{sec:whitelist}
+\begin{itemize}
+  \item \textbf{Sequence-derived:} 32-d AE latent; reconstruction error; plate-local nearest-neighbour identity.
+  \item \textbf{Trace/instrument:} \texttt{TRACE\_SCORE}, \texttt{Noise\_Level}, \texttt{PEAK\_WIDTH}, artefact flags, region qualities (e.g., EARLY/MID/LATE\_SIGNAL).
+  \item \textbf{Meta flags:} \texttt{Short\_Read}, \texttt{Has\_Non\_ACTG\_Bases}.
+  \item \textbf{Calibrated threshold:} decision threshold $\tau=0.47$ (see Chapter~\ref{cha:Evaluation}).
+\end{itemize}
+Identifiers (\texttt{Client\_ID}, \texttt{DNA\_ID}, \texttt{Primer\_ID}) are \emph{excluded from the classifier} but are used in the post-hoc rule layer and in human-readable exports for transparency and actionability.
+
+
+\section{System Overview and Orchestration}
+\label{sec:system_overview}
+
+A watcher process \texttt{deploy\_prometheus.py} runs continuously at the project root. It polls the \texttt{input/} folder every few seconds and processes plates \emph{sequentially} (one at a time) through Steps~1--4. \textbf{After each attempt—success or failure—the input Excel is moved to \texttt{input/processed/}.} To re-run a failed plate, the file must be re-added to \texttt{input/}. After a successful run, a background routine (Step~5) is launched asynchronously for optional historical validation.
+
+\begin{enumerate}
+  \item \textbf{Step~1 -- Preprocessing} (\texttt{preprocess\_plates\_wrapper.py}): Q20 trimming, ambiguity flags, position-aware 4-mer tokenization, and plate-local similarity ($\geq$66\%).
+  \item \textbf{Step~2 -- Autoencoder (per plate)} (\texttt{auto\_encoder\_wrapper.py}): train seq-to-seq Conv1D AE; export per-well latent vectors and reconstruction errors.
+  \item \textbf{Step~3 -- Features \& Classifier} (\texttt{build\_features\_wrapper.py}, \texttt{lgbm\_classifier\_wrapper.py}): merge features; score with LightGBM (plate-wise CV during development, calibrated threshold).
+  \item \textbf{Step~4 -- Post-hoc Rules \& Exports} (\texttt{generate\_results\_wrapper.py}): fuse model scores with rules; save interpretable CSVs.
+  \item \textbf{Step~5 -- (Async) Historical/Taxonomic Check} (\texttt{verify\_anomalies\_with\_history.py}): launched \emph{after} a successful run to enrich flagged wells with optional BLAST taxonomy and customer-history alignment; runs in the background.
+\end{enumerate}
+
+\noindent\textit{Artifact locations.} Steps~1 and~2 write staging artifacts under \texttt{Step\_1/output/} and \texttt{Step\_2/output/}. The orchestrator copies \emph{and opens} the plate layout HTML at \texttt{results/\{plate\}/\{plate\}\_layout.html}. Step~3 writes \texttt{results/\{plate\}/features\_lgbm.csv} and \texttt{results/\{plate\}/predictions\_lgbm.csv}; Step~4 writes \texttt{results/\{plate\}/predictions\_interpretable.csv} and \texttt{results/\{plate\}/predictions\_interpretable\_labview.csv}.
+
+\section{From Proposal to Implementation: Stepwise Evolution}
+\label{sec:stepwise_evolution}
+
+This section bridges Chapter~\ref{cha:Proposal} to the implemented pipeline by comparing, per step, what was proposed, what we observed, and the change we made. Quantitative evidence for these pivots is presented in Chapter~\ref{cha:Evaluation}.
 
 
 \subsection*{Step 1 — Data Processing \& Similarity}
